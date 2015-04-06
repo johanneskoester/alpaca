@@ -1,4 +1,5 @@
-use call::Caller;
+use super::{Caller, GenotypeLikelihoods};
+use super::super::utils;
 
 
 pub struct Union<L: Caller, R: Caller> {
@@ -9,6 +10,6 @@ pub struct Union<L: Caller, R: Caller> {
 
 impl<L: Caller, R: Caller> Caller for Union<L, R> {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> f64 {
-        left.call(likelihoods) + right.call(likelihoods)
+        self.left.call(likelihoods) + self.right.call(likelihoods)
     }
 }
