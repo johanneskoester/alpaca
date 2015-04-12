@@ -1,19 +1,19 @@
 use std::f64;
-use std::iter::AdditiveIterator;
 
-use super::{Caller, GenotypeLikelihoods};
-use super::super::utils;
+use call::{Caller, GenotypeLikelihoods};
+use utils;
+use Prob;
 
 
 pub struct SampleUnion {
     samples: Vec<usize>,
     ploidy: usize,
-    heterozygosity: f64,
+    heterozygosity: Prob,
 }
 
 
 impl Caller for SampleUnion {
-    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> f64 {
+    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> Prob {
         let (ref_likelihood, marginal) = self.marginal(likelihoods);
         self.prior(0) + ref_likelihood - marginal
     }
@@ -21,23 +21,23 @@ impl Caller for SampleUnion {
 
 
 impl SampleUnion {
-    fn prior(&self, m: usize) -> f64 {
+    fn prior(&self, m: usize) -> Prob {
         if m > 0 {
-            self.heterozygosity - (m as f64).ln()
+            self.heterozygosity - (m as Prob).ln()
         }
         else {
-            (1.0 - (1..self.samples.len() * self.ploidy).map(|i| 1.0 / i as f64).sum()).ln()
+            (1.0 - (1..self.samples.len() * self.ploidy).map(|i| 1.0 / i as Prob).sum::<Prob>()).ln()
         }
     }
 
-    fn allelefreq_likelihood(&self, m: usize, sample: usize, likelihoods: &[GenotypeLikelihoods]) -> f64 {
+    fn allelefreq_likelihood(&self, m: usize, sample: usize, likelihoods: &[GenotypeLikelihoods]) -> Prob {
         // TODO uncomment:
         // let prior = (1.0 / utils::binomial(3 + m - 1, m)).ln();
         let prior = 0.1;
         utils::log_prob_sum(&likelihoods[sample].with_allelefreq(m)) + prior
     }
 
-    fn marginal(&self, likelihoods: &[GenotypeLikelihoods]) -> (f64, f64) {
+    fn marginal(&self, likelihoods: &[GenotypeLikelihoods]) -> (Prob, Prob) {
         let mut z = utils::matrix(f64::NEG_INFINITY, self.samples.len() + 1, self.ploidy + 1);
         z[0][0] = 0.0;
 

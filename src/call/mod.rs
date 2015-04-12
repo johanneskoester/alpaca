@@ -3,13 +3,15 @@ use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::iter;
 
+use Prob;
+
 pub mod diff;
 pub mod relaxed_intersection;
 pub mod sample_union;
 pub mod union;
 
 
-pub fn query_probabilities<G: GenotypeLikelihoods, S: Site<G>, I: Iterator<Item=S>, C: Caller>(query: C, sites: I, threads: usize) -> Vec<f64> {
+pub fn query_probabilities<G: GenotypeLikelihoods, S: Site<G>, I: Iterator<Item=S>, C: Caller>(query: C, sites: I, threads: usize) -> Vec<Prob> {
     let (_, exp_site_count) = sites.size_hint();
 
     let probs = Arc::new(Mutex::new(Vec::with_capacity(exp_site_count.unwrap_or(1000))));
@@ -37,7 +39,7 @@ pub fn query_probabilities<G: GenotypeLikelihoods, S: Site<G>, I: Iterator<Item=
 
 
 pub trait Caller {
-    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> f64;
+    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> Prob;
 }
 
 
@@ -47,5 +49,5 @@ pub trait Site<G: GenotypeLikelihoods> {
 
 
 pub trait GenotypeLikelihoods {
-    fn with_allelefreq(&self, m: usize) -> Vec<f64>;
+    fn with_allelefreq(&self, m: usize) -> Vec<Prob>;
 }

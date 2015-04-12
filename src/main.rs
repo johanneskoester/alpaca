@@ -1,8 +1,7 @@
+pub type Prob = f64;
+
 pub mod call;
 pub mod utils;
-
-
-pub type Prob = f64;
 
 
 fn main() {
