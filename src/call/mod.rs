@@ -43,11 +43,21 @@ pub trait Caller {
 }
 
 
-pub trait Site<G: GenotypeLikelihoods> {
-    fn genotype_likelihoods(&self) -> Vec<G>;
+pub struct Site {
 }
 
 
-pub trait GenotypeLikelihoods {
+impl Site {
+    fn genotype_likelihoods(&self) -> Vec<GenotypeLikelihoods> {
+        
+    }
+}
+
+
+pub struct GenotypeLikelihoods {
+}
+
+
+impl GenotypeLikelihoods {
     fn with_allelefreq(&self, m: usize) -> Vec<Prob>;
 }
