@@ -31,11 +31,10 @@ impl SampleUnion {
         }
     }
 
-    fn allelefreq_likelihood(&self, m: usize, sample: usize, likelihoods: &[GenotypeLikelihoods]) -> Prob {
-        // TODO uncomment:
-        // let prior = (1.0 / utils::binomial(3 + m - 1, m)).ln();
-        let prior = 0.1;
-        utils::log_prob_sum(&likelihoods[sample].with_allelefreq(m)) + prior
+    fn allelefreq_likelihood(m: usize, sample: usize, likelihoods: &[GenotypeLikelihoods]) -> Prob {
+        let lh = likelihoods[sample].with_allelefreq(m);
+        let prior = 1.0 / lh.len() as f64;
+        utils::log_prob_sum(&lh) + prior
     }
 
     fn marginal(&self, likelihoods: &[GenotypeLikelihoods]) -> (Prob, Prob) {
@@ -51,7 +50,7 @@ impl SampleUnion {
                 for m in 0..self.ploidy + 1 {
                     // the actual index of k - m in our representation of z
                     let km_idx = (if k >= m { k as i32 } else { 0i32 } - m as i32).abs() as usize % (self.ploidy + 1);
-                    p.push(z[j-1][km_idx] + self.allelefreq_likelihood(m, j, likelihoods));
+                    p.push(z[j-1][km_idx] + Self::allelefreq_likelihood(m, j, likelihoods));
                 }
                 z[j][k_idx] = utils::log_prob_sum(&p);
             }
