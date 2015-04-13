@@ -5,7 +5,7 @@
 #![feature(str_char)]
 
 extern crate itertools;
-extern crate threadpool;
+extern crate simple_parallel;
 extern crate rust_htslib as htslib;
 
 pub type Prob = f64;
