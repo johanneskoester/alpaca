@@ -1,5 +1,8 @@
 #![feature(core)]
-
+#![feature(plugin)]
+#![plugin(peg_syntax_ext)]
+#![feature(collections)]
+#![feature(str_char)]
 
 extern crate itertools;
 extern crate threadpool;
@@ -9,6 +12,7 @@ pub type Prob = f64;
 
 pub mod call;
 pub mod utils;
+pub mod query;
 
 
 fn main() {

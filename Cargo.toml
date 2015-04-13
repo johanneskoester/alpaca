@@ -7,6 +7,7 @@ authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
 [dependencies]
 itertools = "*"
 threadpool = "*"
+peg = "*"
 
 [dependencies.rust-htslib]
 git = "https://github.com/christopher-schroeder/rust-htslib.git"

@@ -1,0 +1,25 @@
+use query::ast::*;
+
+#[pub]
+expr -> Box<Expr>
+        = sample_union / diff / union / relaxed_intersection
+
+sample -> String
+          = [a-zA-Z0-9_-]+ { match_str.to_string() }
+
+sample_union -> Box<Expr>
+                = samples:sample ++ "+" { Box::new(Expr::SampleUnion(samples)) }
+
+diff -> Box<Expr>
+        = l:expr "-" r:expr { Box::new(Expr::Diff(l, r)) }
+
+union -> Box<Expr>
+         = l:expr "+" r:expr { Box::new(Expr::Union(l, r)) }
+
+relaxed_intersection -> Box<Expr>
+                        = children:expr ++ "x" "with" "k" "=" k:number {
+                              Box::new(Expr::RelaxedIntersection(children, k ))
+                          }
+
+number -> usize
+          = [0-9]+ { match_str.parse().unwrap() }

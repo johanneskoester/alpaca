@@ -13,6 +13,17 @@ pub struct SampleUnion {
 }
 
 
+impl SampleUnion {
+    pub fn new() -> Self {
+        SampleUnion {
+            samples: vec![],
+            ploidy: 2,
+            heterozygosity: 0.001
+        }
+    }
+}
+
+
 impl Caller for SampleUnion {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> Prob {
         let (ref_likelihood, marginal) = self.marginal(likelihoods);
