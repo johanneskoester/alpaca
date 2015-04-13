@@ -1,77 +1,20 @@
-use std::thread;
-use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
-use std::iter;
-
-use htslib::bcf;
-
-use Prob;
-use utils;
-
+pub mod site;
 pub mod diff;
 pub mod relaxed_intersection;
 pub mod sample_union;
 pub mod union;
 
+use Prob;
+use call::site::{Site, GenotypeLikelihoods};
 
-pub fn query_probabilities<G: GenotypeLikelihoods, S: Site<G>, I: Iterator<Item=S>, C: Caller>(query: C, sites: I, threads: usize) -> Vec<Prob> {
-    let (_, exp_site_count) = sites.size_hint();
 
-    let probs = Arc::new(Mutex::new(Vec::with_capacity(exp_site_count.unwrap_or(1000))));
-    let (sites_in, sites_out) = channel();
-
-    for _ in 0..threads {
-        let sites = sites_out.clone();
-        let probs = probs.clone();
-        thread::scoped(|| {
-            let (i, site) = sites.recv().unwrap();
-            let p = query.call(site.genotype_likelihoods());
-            let mut probs = probs.lock().unwrap();
-            // extend the vector such that i fits in
-            probs.extend(iter::repeat(0).take(i + 1 - probs.len()));
-            probs[i] = p;
-        });
-    }
-
-    for (i, site) in sites.enumerate() {
-        sites_in.send((i, site));
-    }
-
-    *probs.lock().unwrap()
+pub fn query_probabilities<'a, C: Caller, S: Iterator<Item=&'a mut Site>>(query: C, sites: S) -> Vec<Prob> {
+    sites.map(
+        |site| query.call(&site.genotype_likelihoods().ok().expect("Error reading genotype likelihoods"))
+    ).collect()
 }
 
 
 pub trait Caller {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> Prob;
-}
-
-
-pub struct Site {
-    record: bcf::Record,
-    sample_count: usize,
-}
-
-
-impl Site {
-    fn genotype_likelihoods(&self) -> Result<Vec<GenotypeLikelihoods>, bcf::records::TagError> {
-        let fmt = self.record.format(&b"PL"[..]);
-        let pl = try!(fmt.integer());
-        pl.iter().map(|sample_pl| {
-            GenotypeLikelihoods {
-                likelihoods: sample_pl.iter().map(|s| s as f64 * utils::PHRED_TO_LOG_FACTOR).collect()
-            }
-        })
-    }
-}
-
-
-pub struct GenotypeLikelihoods {
-    likelihoods: Vec<f64>,
-}
-
-
-impl GenotypeLikelihoods {
-    fn with_allelefreq(&self, m: usize) -> Vec<Prob> {
-        // TODO
-    }
 }

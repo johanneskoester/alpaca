@@ -1,6 +1,7 @@
 use std::f64;
 
-use super::{Caller, GenotypeLikelihoods};
+use call::Caller;
+use call::site::GenotypeLikelihoods;
 use super::super::utils;
 
 

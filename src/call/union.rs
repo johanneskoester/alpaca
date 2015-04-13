@@ -1,5 +1,5 @@
-use super::{Caller, GenotypeLikelihoods};
-use super::super::utils;
+use call::Caller;
+use call::site::GenotypeLikelihoods;
 
 
 pub struct Union<L: Caller, R: Caller> {

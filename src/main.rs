@@ -1,5 +1,9 @@
+#![feature(core)]
 
-extern crate htslib;
+
+extern crate itertools;
+extern crate threadpool;
+extern crate rust_htslib as htslib;
 
 pub type Prob = f64;
 

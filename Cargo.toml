@@ -4,6 +4,9 @@ name = "alpaca"
 version = "0.0.1"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
 
-
 [dependencies]
-htslib = "*"
+itertools = "*"
+threadpool = "*"
+
+[dependencies.rust-htslib]
+git = "https://github.com/christopher-schroeder/rust-htslib.git"

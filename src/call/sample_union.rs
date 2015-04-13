@@ -1,6 +1,7 @@
 use std::f64;
 
-use call::{Caller, GenotypeLikelihoods};
+use call::Caller;
+use call::site::GenotypeLikelihoods;
 use utils;
 use Prob;
 
@@ -38,10 +39,10 @@ impl SampleUnion {
     }
 
     fn marginal(&self, likelihoods: &[GenotypeLikelihoods]) -> (Prob, Prob) {
-        let mut z = utils::matrix(f64::NEG_INFINITY, self.samples.len() + 1, self.ploidy + 1);
+        let mut z: Vec<Vec<Prob>> = utils::matrix(f64::NEG_INFINITY, self.samples.len() + 1, self.ploidy + 1);
         z[0][0] = 0.0;
 
-        let calc_col = |k: usize| {
+        let calc_col = |z: &mut Vec<Vec<Prob>>, k| {
             // the actual index of k in our representation of z
             let k_idx = k % (self.ploidy + 1);
 
@@ -52,14 +53,14 @@ impl SampleUnion {
                     let km_idx = (if k >= m { k as i32 } else { 0i32 } - m as i32).abs() as usize % (self.ploidy + 1);
                     p.push(z[j-1][km_idx] + self.allelefreq_likelihood(m, j, likelihoods));
                 }
-                z[j][k] = utils::log_prob_sum(&p);
-            }            
+                z[j][k_idx] = utils::log_prob_sum(&p);
+            }
         };
 
         // calc column k = 0
-        calc_col(0);
+        calc_col(&mut z, 0);
 
-        let mut ref_likelihood = z[self.samples.len()][0];
+        let ref_likelihood = z[self.samples.len()][0];
         let mut marginal = ref_likelihood + self.prior(0);
 
         for k in 1..self.samples.len() * self.ploidy + 1 {
@@ -68,6 +69,7 @@ impl SampleUnion {
             if k > self.ploidy {
                 z[0][0] = f64::NEG_INFINITY;
             }
+            calc_col(&mut z, k);
             marginal = utils::log_prob_sum(&[marginal, z[self.samples.len()][k]]);
         }
 
