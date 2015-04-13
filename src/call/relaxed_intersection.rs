@@ -6,8 +6,8 @@ use super::super::utils;
 
 
 pub struct RelaxedIntersection {
-    children: Vec<Box<Caller>>,
-    k: usize,
+    pub children: Vec<Box<Caller>>,
+    pub k: usize,
 }
 
 

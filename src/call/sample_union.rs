@@ -7,9 +7,9 @@ use Prob;
 
 
 pub struct SampleUnion {
-    samples: Vec<usize>,
-    ploidy: usize,
-    heterozygosity: Prob,
+    pub samples: Vec<usize>,
+    pub ploidy: usize,
+    pub heterozygosity: Prob,
 }
 
 

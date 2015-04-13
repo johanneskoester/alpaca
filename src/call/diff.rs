@@ -3,13 +3,13 @@ use call::site::GenotypeLikelihoods;
 use Prob;
 
 
-pub struct Diff<L: Caller, R: Caller> {
-    left: L,
-    right: R,
+pub struct Diff {
+    pub left: Box<Caller>,
+    pub right: Box<Caller>,
 }
 
 
-impl<L: Caller, R: Caller> Caller for Diff<L, R> {
+impl Caller for Diff {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> Prob {
         // 1 - ((1-p_l) * p_r)
         let p = (-self.left.call(likelihoods).exp()).ln_1p() + self.right.call(likelihoods);
