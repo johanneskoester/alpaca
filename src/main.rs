@@ -1,3 +1,6 @@
+
+extern crate htslib;
+
 pub type Prob = f64;
 
 pub mod call;

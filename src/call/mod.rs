@@ -3,7 +3,10 @@ use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::iter;
 
+use htslib::bcf;
+
 use Prob;
+use utils;
 
 pub mod diff;
 pub mod relaxed_intersection;
@@ -44,20 +47,31 @@ pub trait Caller {
 
 
 pub struct Site {
+    record: bcf::Record,
+    sample_count: usize,
 }
 
 
 impl Site {
-    fn genotype_likelihoods(&self) -> Vec<GenotypeLikelihoods> {
-        
+    fn genotype_likelihoods(&self) -> Result<Vec<GenotypeLikelihoods>, bcf::records::TagError> {
+        let fmt = self.record.format(&b"PL"[..]);
+        let pl = try!(fmt.integer());
+        pl.iter().map(|sample_pl| {
+            GenotypeLikelihoods {
+                likelihoods: sample_pl.iter().map(|s| s as f64 * utils::PHRED_TO_LOG_FACTOR).collect()
+            }
+        })
     }
 }
 
 
 pub struct GenotypeLikelihoods {
+    likelihoods: Vec<f64>,
 }
 
 
 impl GenotypeLikelihoods {
-    fn with_allelefreq(&self, m: usize) -> Vec<Prob>;
+    fn with_allelefreq(&self, m: usize) -> Vec<Prob> {
+        // TODO
+    }
 }
