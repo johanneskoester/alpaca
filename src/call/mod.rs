@@ -19,23 +19,26 @@ use Prob;
 use call::site::{Site, GenotypeLikelihoods};
 
 
-pub fn call<P: AsRef<Path>>(path: &P) {
+pub fn call<P: AsRef<Path>, C: Caller>(path: &P, query: C, fdr: Prob, threads: usize) {
     let reader = bcf::Reader::new(path);
-    
-    
-}
+    let mut records = reader.records();
 
+    let mut pool = simple_parallel::Pool::new(threads);
+    let call = |likelihoods: &Vec<GenotypeLikelihoods>| query.call(likelihoods);
 
-pub fn query_probabilities<'a, C: Caller, S: Iterator<Item=&'a mut Site> + Send>(query: C, sites: S, pool: &mut simple_parallel::Pool) -> Vec<Prob> {
-    let call = |likelihoods: Vec<GenotypeLikelihoods>| query.call(&likelihoods);
-    let probs = {    
-         pool.map(
-            sites.map(|site| site.genotype_likelihoods().ok().expect("Error reading genotype likelihoods")),
-            &call
-        ).collect()
-    };
+    let mut buffer = Vec::with_capacity(1000);
+    let mut candidates = Vec::with_capacity(1000);
 
-    probs
+    loop {
+        buffer.extend(records.by_ref().take(1000).map(|record| Site::new(record.ok().expect("Error reading BCF."))));
+        let likelihoods: Vec<Vec<GenotypeLikelihoods>> = buffer.iter_mut().map(|site| site.genotype_likelihoods()
+                                                       .ok()
+                                                       .expect("Error reading genotype likelihoods.")
+        ).collect();
+
+        candidates.extend(buffer.drain().zip(pool.map(likelihoods.iter(), &call)).filter(|&(_, prob)| prob < fdr));
+    }
+    // TODO go on with candidates (control FDR, write)
 }
 
 

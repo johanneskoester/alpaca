@@ -7,11 +7,15 @@ use Prob;
 
 
 pub struct Site {
-    record: bcf::record::Record,
+    record: bcf::record::Record
 }
 
 
 impl Site {
+    pub fn new(record: bcf::record::Record) -> Self {
+        Site { record: record }
+    }
+
     pub fn genotype_likelihoods(&mut self) -> Result<Vec<GenotypeLikelihoods>, bcf::record::TagError> {
         let allele_count = self.record.allele_count() as usize;
         let mut fmt = self.record.format(&b"PL"[..]);
