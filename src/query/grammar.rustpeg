@@ -4,22 +4,41 @@ use query::ast::*;
 expr -> Box<Expr>
         = sample_union / diff / union / relaxed_intersection
 
+compl -> Box<Expr>
+         = diff / union / relaxed_intersection
+
+atom -> Box<Expr>
+        = single_sample
+        / "(" expr:sample_union ")" { expr }
+        / "(" expr:diff ")" { expr }
+        / "(" expr:union ")" { expr }
+        / "(" expr:relaxed_intersection ")" { expr }
+
 sample -> String
           = [a-zA-Z0-9_-]+ { match_str.to_string() }
 
 sample_union -> Box<Expr>
-                = samples:sample ++ "+" { Box::new(Expr::SampleUnion(samples)) }
+                = s:sample "+" samples:sample ++ "+" {
+                    let mut all = vec![s];
+                    all.extend(samples);
+                    Box::new(Expr::SampleUnion(all))
+                }
+
+single_sample -> Box<Expr>
+                 = s:sample { Box::new(Expr::SampleUnion(vec![s])) }
 
 diff -> Box<Expr>
-        = l:expr "-" r:expr { Box::new(Expr::Diff(l, r)) }
+        = l:atom "-" r:atom { Box::new(Expr::Diff(l, r)) }
 
 union -> Box<Expr>
-         = l:expr "+" r:expr { Box::new(Expr::Union(l, r)) }
+         = l:atom "+" "(" r:compl ")" { Box::new(Expr::Union(l, r)) }
+         / "(" l:compl ")" "+" r:atom { Box::new(Expr::Union(l, r)) }
+         / "(" l:compl ")" "+" "(" r:compl ")" { Box::new(Expr::Union(l, r)) }
 
 relaxed_intersection -> Box<Expr>
-                        = children:expr ++ "x" "with" "k" "=" k:number {
-                              Box::new(Expr::RelaxedIntersection(children, k ))
-                          }
+                        = children:atom ++ "x" "with" "k" "=" k:number {
+                            Box::new(Expr::RelaxedIntersection(children, k ))
+                        }
 
 number -> usize
           = [0-9]+ { match_str.parse().unwrap() }
