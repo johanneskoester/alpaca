@@ -31,8 +31,8 @@ diff -> Box<Expr>
         = l:atom "-" r:atom { Box::new(Expr::Diff(l, r)) }
 
 union -> Box<Expr>
-         = l:atom "+" "(" r:compl ")" { Box::new(Expr::Union(l, r)) }
-         / "(" l:compl ")" "+" r:atom { Box::new(Expr::Union(l, r)) }
+         = l:single_sample "+" "(" r:compl ")" { Box::new(Expr::Union(l, r)) }
+         / "(" l:compl ")" "+" r:single_sample { Box::new(Expr::Union(l, r)) }
          / "(" l:compl ")" "+" "(" r:compl ")" { Box::new(Expr::Union(l, r)) }
 
 relaxed_intersection -> Box<Expr>
