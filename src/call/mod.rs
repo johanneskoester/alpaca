@@ -1,4 +1,8 @@
+use std::path::Path;
+use std::convert::AsRef;
+
 use simple_parallel;
+use htslib::bcf;
 
 pub mod site;
 pub mod diff;
@@ -13,6 +17,13 @@ pub use call::sample_union::SampleUnion;
 
 use Prob;
 use call::site::{Site, GenotypeLikelihoods};
+
+
+pub fn call<P: AsRef<Path>>(path: &P) {
+    let reader = bcf::Reader::new(path);
+    
+    
+}
 
 
 pub fn query_probabilities<'a, C: Caller, S: Iterator<Item=&'a mut Site> + Send>(query: C, sites: S, pool: &mut simple_parallel::Pool) -> Vec<Prob> {
