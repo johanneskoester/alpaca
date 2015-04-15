@@ -44,7 +44,23 @@ impl GenotypeLikelihoods {
             1 => (1..self.allele_count).map(|k| self.likelihoods[idx(0, k)]).collect(),
             2 => (1..self.allele_count).cartesian_product(1..self.allele_count)
                                        .map(|(j, k)| self.likelihoods[idx(j, k)]).collect(),
-            _ => panic!("Expecting diploid samples.")
+            _ => panic!("Bug: Expecting diploid samples.")
         }
+    }
+
+    pub fn maximum_likelihood_genotype(&self) -> (u32, u32) {
+        // TODO generalize for any ploidy
+        let (mut j, mut k) = (0, 0);
+        for &l in self.likelihoods.iter() {
+            if l == 0.0 {
+                return (j, k);
+            }
+            j += 1;
+            if j > k {
+                k += 1;
+                j = 0;
+            }
+        }
+        panic!("Bug: no likelihood of zero found.");
     }
 }

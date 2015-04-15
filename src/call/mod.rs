@@ -17,9 +17,10 @@ pub use call::sample_union::SampleUnion;
 
 use Prob;
 use call::site::{Site, GenotypeLikelihoods};
+use utils;
 
 
-pub fn call<P: AsRef<Path>, C: Caller>(path: &P, query: C, fdr: Prob, threads: usize) {
+pub fn call<P: AsRef<Path>, C: Caller>(path: &P, query: C, fdr: Prob, threads: usize) -> Vec<(Site, Prob)> {
     let reader = bcf::Reader::new(path);
     let mut records = reader.records();
 
@@ -32,6 +33,12 @@ pub fn call<P: AsRef<Path>, C: Caller>(path: &P, query: C, fdr: Prob, threads: u
 
     loop {
         site_buffer.extend(records.by_ref().take(1000).map(|record| Site::new(record.ok().expect("Error reading BCF."))));
+
+        if site_buffer.is_empty() {
+            control_fdr(&mut candidates, fdr);
+            return candidates;
+        }
+
         prob_buffer.extend(pool.map(
             site_buffer.iter_mut().map(
                 |site| site.genotype_likelihoods().ok().expect("Error reading genotype likelihoods.")
@@ -40,7 +47,21 @@ pub fn call<P: AsRef<Path>, C: Caller>(path: &P, query: C, fdr: Prob, threads: u
 
         candidates.extend(site_buffer.drain().zip(prob_buffer.drain()).filter(|&(_, prob)| prob < fdr));
     }
-    // TODO go on with candidates (control FDR, write)
+}
+
+
+pub fn control_fdr(candidates: &mut Vec<(Site, Prob)>, fdr: Prob) {
+    let cmp = |a: &Prob, b: &Prob| a.partial_cmp(b).expect("Bug: NaN probability found.");
+    let mut probs: Vec<Prob> = candidates.iter().map(|&(_, prob)| prob).collect();
+    probs.sort_by(&cmp);
+    let exp_fdr = utils::log_prob_cumsum(&probs);
+    let max_prob = match exp_fdr.binary_search_by(|probe| cmp(&probe, &fdr)) {
+        Ok(i)           => probs[i],
+        Err(i) if i > 0 => probs[i-1],
+        _               => 0.0
+    };
+
+    candidates.retain(|&(_, prob)| prob <= max_prob);
 }
 
 
