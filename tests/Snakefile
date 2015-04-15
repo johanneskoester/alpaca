@@ -1,0 +1,12 @@
+
+
+shell.prefix("export PATH=../target/debug:$PATH; ")
+
+rule test_preprocess:
+    input:
+        "mpileup.ref.fa",
+        "mpileup.1.bam",
+    output:
+        "HG00100.bcf"
+    shell:
+        "alpaca-preprocess {input} > {output}"
