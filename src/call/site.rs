@@ -27,6 +27,27 @@ impl Site {
             }
         }).collect())
     }
+
+    pub fn into_record(mut self, prob: Prob) -> bcf::record::Record {
+        {
+            let qual = prob * utils::LOG_TO_PHRED_FACTOR;
+            self.record.set_qual(qual as f32);
+
+            let likelihoods = self.genotype_likelihoods()
+                .ok()
+                .expect("Bug: Error reading genotype likelihoods, they should have been read before.");
+
+            let mut fmt = self.record.format(b"GT");
+            let mut gtfmt = fmt.integer().ok().expect("Bug: error reading genotype field");
+
+            for (sample, (a, b)) in likelihoods.iter().map(|gl| gl.maximum_likelihood_genotype()).enumerate() {
+                // as specified in the BCFv2 docs
+                gtfmt[sample][0] = ((a + 1) << 1) as i32;
+                gtfmt[sample][1] = ((b + 1) << 1) as i32;
+            }
+        }        
+        self.record
+    }
 }
 
 

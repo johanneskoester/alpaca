@@ -1,6 +1,3 @@
-use std::path::Path;
-use std::convert::AsRef;
-
 use simple_parallel;
 use htslib::bcf;
 
@@ -20,9 +17,8 @@ use call::site::{Site, GenotypeLikelihoods};
 use utils;
 
 
-pub fn call<P: AsRef<Path>, C: Caller>(path: &P, query: C, fdr: Prob, threads: usize) -> Vec<(Site, Prob)> {
-    let reader = bcf::Reader::new(path);
-    let mut records = reader.records();
+pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Prob, threads: usize) -> Vec<(Site, Prob)> {
+    let mut records = bcf.records();
 
     let mut pool = simple_parallel::Pool::new(threads);
     let call = |likelihoods: Vec<GenotypeLikelihoods>| query.call(&likelihoods);
