@@ -6,7 +6,7 @@ use Prob;
 
 pub fn write(writer: &mut bcf::Writer, mut calls: Vec<(Site, Prob)>) {
     for (site, prob) in calls.drain() {
-        let record = site.into_record(prob);
+        let record = site.into_record(prob, &writer.header);
         writer.write(&record).ok().expect("Error writing calls.");
     }
 }

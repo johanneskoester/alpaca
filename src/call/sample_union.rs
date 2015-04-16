@@ -38,7 +38,7 @@ impl SampleUnion {
             self.heterozygosity - (m as Prob).ln()
         }
         else {
-            (1.0 - (1..self.samples.len() * self.ploidy).map(|i| 1.0 / i as Prob).sum::<Prob>()).ln()
+            (1.0 - (1..self.samples.len() * self.ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>()).ln() // +1?
         }
     }
 
@@ -65,12 +65,12 @@ impl SampleUnion {
                 }
                 z[j][k_idx] = utils::log_prob_sum(&p);
             }
+            z[self.samples.len()][k_idx]
         };
 
+        
         // calc column k = 0
-        calc_col(&mut z, 0);
-
-        let ref_likelihood = z[self.samples.len()][0];
+        let ref_likelihood = calc_col(&mut z, 0);
         let mut marginal = ref_likelihood + self.prior(0);
 
         for k in 1..self.samples.len() * self.ploidy + 1 {
@@ -79,8 +79,8 @@ impl SampleUnion {
             if k > self.ploidy {
                 z[0][0] = f64::NEG_INFINITY;
             }
-            calc_col(&mut z, k);
-            marginal = utils::log_prob_sum(&[marginal, z[self.samples.len()][k]]);
+            
+            marginal = utils::log_prob_sum(&[marginal, calc_col(&mut z, k) + self.prior(k)]);
         }
 
         (ref_likelihood, marginal)
