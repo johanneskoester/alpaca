@@ -2,11 +2,54 @@
 
 shell.prefix("export PATH=../target/debug:$PATH; ")
 
+
+SAMPLES = {"HG00100": "mpileup.1.bam", "HG00101": "mpileup.2.bam"}
+QUERIES = {"1": "HG00100 - HG00101", "2": "HG00100 - HG00100", "3": "HG00100"}
+
+
+rule all:
+    input:
+        expand("calls.{query}.bcf", query="1 2 3".split()),
+
+
 rule test_preprocess:
     input:
         "mpileup.ref.fa",
-        "mpileup.1.bam",
+        lambda wildcards: SAMPLES[wildcards.sample],
     output:
-        "HG00100.bcf"
+        "{sample}.bcf",
+    threads: 8
     shell:
-        "alpaca-preprocess {input} > {output}"
+        "alpaca-preprocess -t {threads} {input} > {output}"
+
+
+rule test_merge:
+    input:
+        bcf=expand("{sample}.bcf", sample=SAMPLES),
+        csi=expand("{sample}.bcf.csi", sample=SAMPLES),
+    output:
+        "all.bcf",
+    shell:
+        "alpaca-merge {input.bcf} > {output}"
+
+
+rule test_call:
+    input:
+        "all.bcf",
+    output:
+        "calls.{query,(1|2|3)}.bcf",
+    params:
+        query=lambda wildcards: QUERIES[wildcards.query]
+    threads: 8
+    shell:
+        "alpaca-call -t {threads} '{params.query}' < {input} > {output}"
+
+
+rule index_bcf:
+    input:
+        "{prefix}.bcf"
+    output:
+        "{prefix}.bcf.csi"
+    shell:
+        "bcftools index -f {input}"
+

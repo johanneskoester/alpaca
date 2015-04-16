@@ -2,7 +2,7 @@ use query::ast::*;
 
 #[pub]
 expr -> Box<Expr>
-        = sample_union / diff / union / relaxed_intersection
+        = single_sample / sample_union / diff / union / relaxed_intersection
 
 compl -> Box<Expr>
          = diff / union / relaxed_intersection

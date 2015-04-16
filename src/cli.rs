@@ -33,7 +33,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
             mkfifo(fifo.as_path());
             (process::Command::new("samtools").arg("mpileup")
                                              .arg("-r").arg(seq).arg("-f").arg(fasta.as_ref())
-                                             .arg("-g").arg("-o").arg(fifo.as_path())
+                                             .arg("-g").arg("-u").arg("-o").arg(fifo.as_path())
                                              .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
                                              .spawn().ok().expect("Failed to execute samtools mpileup."), fifo)
         };
@@ -44,7 +44,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
             
             if writer.is_empty() {
                 let header = bcf::Header::with_template(&reader.header);
-                writer.push(bcf::Writer::new(&"-", &header));
+                writer.push(bcf::Writer::new(&"-", &header, false, false));
             }
 
             let mut record = bcf::Record::new();
@@ -97,7 +97,7 @@ pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
 
     let mut header = bcf::Header::with_template(&inbcf.header);
     header.push_record(b"##FORMAT=<ID=GT,Number=2,Type=Integer,Description=\"Genotype\">"); // TODO generalize ploidy
-    let mut outbcf = bcf::Writer::new(&"-", &header);
+    let mut outbcf = bcf::Writer::new(&"-", &header, false, false);
 
     let calls = call::call(&mut inbcf, query_caller, fdr, threads);
     io::write(&mut outbcf, calls);
