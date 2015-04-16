@@ -9,4 +9,4 @@ rule test_preprocess:
     output:
         "HG00100.bcf"
     shell:
-        "alpaca-preprocess {input}"
+        "alpaca-preprocess {input} > {output}"

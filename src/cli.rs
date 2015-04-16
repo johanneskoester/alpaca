@@ -1,7 +1,6 @@
 use std::convert::AsRef;
 use std::path::Path;
 use std::process;
-use std::fs;
 
 use tempdir;
 use itertools::Itertools;
@@ -27,51 +26,67 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
                                       .ok().expect("Invalid reference name.")).collect_vec();
 
     let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
-    let mut pool = simple_parallel::Pool::new(threads);
-    let mpileup = |seq: &String| {
-        let fifo = tmp.path().join(seq);
-        mkfifo(fifo.as_path());
-        (process::Command::new("samtools").arg("mpileup")
-                                         .arg("-r").arg(seq).arg("-f").arg(fasta.as_ref())
-                                         .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
-                                         .stdout(process::Stdio::piped())
-                                         .spawn().ok().expect("Failed to execute samtools."), fifo)
-    };
+    {
+        let mut pool = simple_parallel::Pool::new(threads);
+        let mpileup = |seq: &String| {
+            let fifo = tmp.path().join(seq).with_extension("bcf");
+            mkfifo(fifo.as_path());
+            (process::Command::new("samtools").arg("mpileup")
+                                             .arg("-r").arg(seq).arg("-f").arg(fasta.as_ref())
+                                             .arg("-g").arg("-o").arg(fifo.as_path())
+                                             .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
+                                             .spawn().ok().expect("Failed to execute samtools mpileup."), fifo)
+        };
 
-    let mut writer = vec![]; // ugly hack, try Option once it works here.
-    for (process, fifo) in pool.map(seqs.iter(), &mpileup) {
-        let reader = bcf::Reader::new(&fifo);
-        
-        if writer.is_empty() {
-            let header = bcf::Header::with_template(&reader.header);
-            writer.push(bcf::Writer::new(&"-", &header));
-        }
-
-        let mut record = bcf::Record::new();
-        loop {
-            match reader.read(&mut record) {
-                Ok(()) => writer[0].write(&record).ok().expect("Error writing BCF."),
-                Err(bcf::ReadError::Invalid) => panic!("Invalid BCF record."),
-                Err(bcf::ReadError::NoMoreRecord) => break
+        let mut writer = vec![]; // ugly hack, try Option once it works here.
+        for (process, fifo) in pool.map(seqs.iter(), &mpileup) {
+            let reader = bcf::Reader::new(&fifo);
+            
+            if writer.is_empty() {
+                let header = bcf::Header::with_template(&reader.header);
+                writer.push(bcf::Writer::new(&"-", &header));
             }
+
+            let mut record = bcf::Record::new();
+            loop {
+                match reader.read(&mut record) {
+                    Ok(()) => writer[0].write(&record).ok().expect("Error writing BCF."),
+                    Err(bcf::ReadError::Invalid) => panic!("Invalid BCF record."),
+                    Err(bcf::ReadError::NoMoreRecord) => break
+                }
+            }
+            //if !process.wait().ok().expect("Error retrieving exit status.").success() {
+            //    panic!("Error during execution of samtools mpileup (see above).");
+            //}
         }
-        fs::remove_file(&fifo).ok().expect("Error removing FIFO.");
     }
+    tmp.close().ok().expect("Error removing FIFOs.");
 }
 
 
 pub fn merge<P: AsRef<Path>>(bcfs: &[P]) {
-    let _bcfs: Vec<&str> = bcfs.iter().map(|bcf| bcf.as_ref().to_str().unwrap()).collect();
-    let status = process::Command::new("sh").arg("-c").arg(
-        format!(
-            "bcftools merge -O b {} | bcftools view -O b -e 'PL[0] == 0'",
-            &_bcfs.connect(" ")
-        )
-    ).status().ok().expect("Failed to execute bcftools.");
+    let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
+    let fifo = tmp.path().join("merge").with_extension("bcf");
+    mkfifo(fifo.as_path());
 
-    if !status.success() {
-        panic!("Error during execution of bcftools (see above).");
+    let mut merge = process::Command::new("bcftools").arg("merge")
+                                   .arg("-O").arg("b")
+                                   .arg("-o").arg(&fifo)
+                                   .args(&bcfs.iter().map(|bcf| bcf.as_ref()).collect_vec())
+                                   .spawn().ok().expect("Failed to execute bcftools merge.");
+    let view = process::Command::new("bcftools").arg("view")
+                                   .arg("-O").arg("b")
+                                   .arg("-e").arg("PL[0] == 0")
+                                   .arg(fifo)
+                                   .status().ok().expect("Failed to execute bcftools view.");
+
+    if !merge.wait().ok().expect("Error retrieving exit status.").success() {
+        panic!("Error during execution of bcftools merge (see above).");
     }
+    if !view.success() {
+        panic!("Error during execution of bcftools view (see above).");
+    }
+    tmp.close().ok().expect("Error removing FIFO.");
 }
 
 
