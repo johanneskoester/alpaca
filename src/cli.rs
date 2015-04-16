@@ -1,8 +1,6 @@
 use std::convert::AsRef;
 use std::path::Path;
-use std::ffi::os_str::OsStr;
 use std::process;
-use std;
 use std::fs;
 
 use tempdir;
@@ -16,32 +14,48 @@ use call;
 use io;
 use query;
 
-pub fn preprocess<P: AsRef<Path> + AsRef<OsStr> + Sync>(fasta: &P, bams: &[P], threads: usize) {
+
+fn mkfifo<'a>(path: &Path) {
+    process::Command::new("mkfifo").arg(path).status().ok().expect("Failed to create FIFO.");
+}
+
+
+pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) {
     let fasta_index = bio::io::fasta::Index::with_fasta_file(fasta)
         .ok().expect("Error reading FAI index: FASTA file must be indexed with samtools index.");
     let seqs = fasta_index.sequences().into_iter().map(|seq| String::from_utf8(seq.name)
                                       .ok().expect("Invalid reference name.")).collect_vec();
 
+    let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
     let mut pool = simple_parallel::Pool::new(threads);
-    let mpileup = |seq| {
-        process::Command::new("samtools").arg("mpileup")
-                                         .arg("-r").arg(seq).arg("-f").arg(fasta)
-                                         .args(bams)
+    let mpileup = |seq: &String| {
+        let fifo = tmp.path().join(seq);
+        mkfifo(fifo.as_path());
+        (process::Command::new("samtools").arg("mpileup")
+                                         .arg("-r").arg(seq).arg("-f").arg(fasta.as_ref())
+                                         .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
                                          .stdout(process::Stdio::piped())
-                                         .spawn().ok().expect("Failed to execute samtools.")
+                                         .spawn().ok().expect("Failed to execute samtools."), fifo)
     };
 
-    let mut writer = None;    
-    for process in pool.map(seqs, &mpileup) {
-        let mut reader = bcf::Reader::new(&"-");
+    let mut writer = vec![]; // ugly hack, try Option once it works here.
+    for (process, fifo) in pool.map(seqs.iter(), &mpileup) {
+        let reader = bcf::Reader::new(&fifo);
         
-        if writer.is_none() {
-            let header = bcf::Header::with_template(reader.header);
-            writer = Some(bcf::Writer::new(&"-", header));
+        if writer.is_empty() {
+            let header = bcf::Header::with_template(&reader.header);
+            writer.push(bcf::Writer::new(&"-", &header));
         }
+
         let mut record = bcf::Record::new();
-        reader.read(&mut record).ok().expect("Error reading BCF.");
-        writer.write(&record).ok().expect("Error writing BCF.");
+        loop {
+            match reader.read(&mut record) {
+                Ok(()) => writer[0].write(&record).ok().expect("Error writing BCF."),
+                Err(bcf::ReadError::Invalid) => panic!("Invalid BCF record."),
+                Err(bcf::ReadError::NoMoreRecord) => break
+            }
+        }
+        fs::remove_file(&fifo).ok().expect("Error removing FIFO.");
     }
 }
 
