@@ -3,7 +3,7 @@ use htslib::bcf;
 use itertools::Itertools;
 
 use utils;
-use Prob;
+use LogProb;
 
 
 pub struct Site {
@@ -26,14 +26,14 @@ impl Site {
                 vec![]
             }
             else {
-                sample_pl.iter().map(|&s| s as Prob * utils::PHRED_TO_LOG_FACTOR).collect()
+                sample_pl.iter().map(|&s| s as LogProb * utils::PHRED_TO_LOG_FACTOR).collect()
             };
 
             GenotypeLikelihoods::new(likelihoods, allele_count)
         }).collect())
     }
 
-    pub fn into_record(mut self, prob: Prob, header: &bcf::header::HeaderView) -> bcf::record::Record {
+    pub fn into_record(mut self, prob: LogProb, header: &bcf::header::HeaderView) -> bcf::record::Record {
         {
             self.record.translate(header);
             let qual = prob * utils::LOG_TO_PHRED_FACTOR;
@@ -59,17 +59,17 @@ impl Site {
 
 
 pub struct GenotypeLikelihoods {
-    likelihoods: Vec<Prob>,
+    likelihoods: Vec<LogProb>,
     allele_count: usize,
 }
 
 
 impl GenotypeLikelihoods {
-    pub fn new(likelihoods: Vec<Prob>, allele_count: usize) -> Self {
+    pub fn new(likelihoods: Vec<LogProb>, allele_count: usize) -> Self {
         GenotypeLikelihoods { likelihoods: likelihoods, allele_count: allele_count }
     }
 
-    pub fn with_allelefreq(&self, m: usize) -> Vec<Prob> {
+    pub fn with_allelefreq(&self, m: usize) -> Vec<LogProb> {
         let idx = |j, k| (k * (k + 1) / 2) + j;
         match m {
             _ if self.likelihoods.is_empty() => vec![0.0], // zero coverage, all likelihoods are 1

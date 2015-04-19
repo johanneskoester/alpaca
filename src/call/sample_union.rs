@@ -3,31 +3,33 @@ use std::f64;
 use call::Caller;
 use call::site::GenotypeLikelihoods;
 use utils;
-use Prob;
+use {Prob, LogProb};
+use EPSILON;
 
 
 pub struct SampleUnion {
     samples: Vec<usize>,
     ploidy: usize,
-    heterozygosity: Prob,
-    ref_prior: Prob,
+    heterozygosity: LogProb,
+    ref_prior: LogProb,
 }
 
 
 impl SampleUnion {
     pub fn new(samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
+        let ref_prior = (-(1..samples.len() * ploidy + 1).map(|i| 1.0 / i as LogProb).sum::<LogProb>() * heterozygosity).ln_1p();
         SampleUnion {
-            samples: vec![],
+            samples: samples,
             ploidy: ploidy,
             heterozygosity: heterozygosity.ln(),
-            ref_prior: (-(1..samples.len() * ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>() * heterozygosity).ln_1p()
+            ref_prior: ref_prior,
         }
     }
 }
 
 
 impl Caller for SampleUnion {
-    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> Prob {
+    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
         let (ref_likelihood, marginal) = self.marginal(likelihoods);
         self.prior(0) + ref_likelihood - marginal
     }
@@ -35,26 +37,26 @@ impl Caller for SampleUnion {
 
 
 impl SampleUnion {
-    fn prior(&self, m: usize) -> Prob {
+    fn prior(&self, m: usize) -> LogProb {
         if m > 0 {
-            self.heterozygosity - (m as Prob).ln()
+            self.heterozygosity - (m as LogProb).ln()
         }
         else {
             self.ref_prior
         }
     }
 
-    fn allelefreq_likelihood(sample: usize, m: usize, likelihoods: &[GenotypeLikelihoods]) -> Prob {
+    fn allelefreq_likelihood(sample: usize, m: usize, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
         let lh = likelihoods[sample].with_allelefreq(m);
         let prior = (1.0 / lh.len() as f64).ln();
         utils::log_prob_sum(&lh) + prior
     }
 
-    fn marginal(&self, likelihoods: &[GenotypeLikelihoods]) -> (Prob, Prob) {
-        let mut z: Vec<Vec<Prob>> = utils::matrix(f64::NEG_INFINITY, self.samples.len() + 1, self.ploidy + 1);
+    fn marginal(&self, likelihoods: &[GenotypeLikelihoods]) -> (LogProb, LogProb) {
+        let mut z: Vec<Vec<LogProb>> = utils::matrix(f64::NEG_INFINITY, self.samples.len() + 1, self.ploidy + 1);
         z[0][0] = 0.0;
 
-        let calc_col = |z: &mut Vec<Vec<Prob>>, k| {
+        let calc_col = |z: &mut Vec<Vec<LogProb>>, k| {
             // the actual index of k in our representation of z
             let k_idx = k % (self.ploidy + 1);
 
@@ -87,7 +89,7 @@ impl SampleUnion {
             marginal = utils::log_prob_sum(&[marginal, likelihood + self.prior(k)]);
         }
 
-        assert!(marginal <= 0.0);
+        assert!(marginal < EPSILON, format!("marginal {} > 0", marginal));
 
         (ref_likelihood, marginal)
     }
@@ -97,7 +99,9 @@ impl SampleUnion {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use Prob;
+    use call::Caller;
+    use utils;
+    use LogProb;
     use call::site::GenotypeLikelihoods;
 
     fn setup(n: usize) -> SampleUnion {
@@ -105,11 +109,15 @@ mod tests {
         SampleUnion::new((0..n).collect(), 2, 0.001)
     }
 
-    fn likelihoods() -> Vec<GenotypeLikelihoods> {
+    fn ref_likelihoods() -> Vec<GenotypeLikelihoods> {
         vec![ GenotypeLikelihoods::new(vec![(1.0f64).ln(), (0.1f64).ln(), (0.0002f64).ln(), (0.0002f64).ln(), (0.0002f64).ln(), (0.0002f64).ln()], 3) ]
     }
 
-    fn eq(a: Prob, b: Prob) -> bool {
+    fn alt_likelihoods() -> Vec<GenotypeLikelihoods> {
+        vec![ GenotypeLikelihoods::new(vec![167.0 * utils::PHRED_TO_LOG_FACTOR, 0.0, 96.0 * utils::PHRED_TO_LOG_FACTOR], 2) ]
+    }
+
+    fn eq(a: LogProb, b: LogProb) -> bool {
         (a - b).abs() < 0.001
     }
 
@@ -127,18 +135,33 @@ mod tests {
 
     #[test]
     fn test_allelefreq_likelihood() {
-        let likelihoods = likelihoods();
+        let likelihoods = ref_likelihoods();
         assert!(eq(SampleUnion::allelefreq_likelihood(0, 0, &likelihoods).exp(), 1.0));
         assert!(eq(SampleUnion::allelefreq_likelihood(0, 1, &likelihoods).exp(), 0.0501));
         assert!(eq(SampleUnion::allelefreq_likelihood(0, 2, &likelihoods).exp(), 0.0002));
+
+        let alt_likelihoods = alt_likelihoods();
+        println!("alt lh {}", SampleUnion::allelefreq_likelihood(0, 1, &likelihoods).exp());
     }
 
     #[test]
     fn test_marginal() {
         let union = setup(1);
-        let likelihoods = likelihoods();
+        let likelihoods = ref_likelihoods();
 
         let (ref_lh, marginal) = union.marginal(&likelihoods);
-        println!("{} {}", ref_lh, marginal);
+        println!("marginal {} {}", ref_lh, marginal);
+    }
+
+    #[test]
+    fn test_call() {
+        let union = setup(1);
+        let likelihoods = alt_likelihoods();
+        let (ref_lh, marginal) = union.marginal(&likelihoods);
+        println!("alt marginal {} {}", ref_lh, marginal);
+
+        let posterior = union.call(&likelihoods);
+
+        println!("posterior {} {}", posterior, union.prior(0));
     }
 }

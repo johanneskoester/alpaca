@@ -1,5 +1,6 @@
 use std::f64;
 
+use LogProb;
 use call::Caller;
 use call::site::GenotypeLikelihoods;
 use super::super::utils;
@@ -12,8 +13,8 @@ pub struct RelaxedIntersection {
 
 
 impl Caller for RelaxedIntersection {
-    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> f64 {
-        let prob_ref: Vec<f64> = self.children.iter().map(|child| child.call(likelihoods)).collect();
+    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
+        let prob_ref: Vec<LogProb> = self.children.iter().map(|child| child.call(likelihoods)).collect();
 
         let mut y = utils::matrix(f64::NEG_INFINITY, self.children.len() + 1, 2);
         y[0][0] = 0.0;

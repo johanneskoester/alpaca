@@ -1,5 +1,6 @@
 use call::Caller;
 use call::site::GenotypeLikelihoods;
+use LogProb;
 
 
 pub struct Union {
@@ -9,7 +10,7 @@ pub struct Union {
 
 
 impl Caller for Union {
-    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> f64 {
+    fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
         self.left.call(likelihoods) + self.right.call(likelihoods)
     }
 }
