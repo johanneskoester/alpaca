@@ -26,13 +26,10 @@ impl Site {
                 vec![]
             }
             else {
-                sample_pl.iter().map(|&s| s as f64 * utils::PHRED_TO_LOG_FACTOR).collect()
+                sample_pl.iter().map(|&s| s as Prob * utils::PHRED_TO_LOG_FACTOR).collect()
             };
 
-            GenotypeLikelihoods {
-                likelihoods: likelihoods,
-                allele_count: allele_count,
-            }
+            GenotypeLikelihoods::new(likelihoods, allele_count)
         }).collect())
     }
 
@@ -68,6 +65,10 @@ pub struct GenotypeLikelihoods {
 
 
 impl GenotypeLikelihoods {
+    pub fn new(likelihoods: Vec<Prob>, allele_count: usize) -> Self {
+        GenotypeLikelihoods { likelihoods: likelihoods, allele_count: allele_count }
+    }
+
     pub fn with_allelefreq(&self, m: usize) -> Vec<Prob> {
         let idx = |j, k| (k * (k + 1) / 2) + j;
         match m {

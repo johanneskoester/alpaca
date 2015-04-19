@@ -7,18 +7,20 @@ use Prob;
 
 
 pub struct SampleUnion {
-    pub samples: Vec<usize>,
-    pub ploidy: usize,
-    pub heterozygosity: Prob,
+    samples: Vec<usize>,
+    ploidy: usize,
+    heterozygosity: Prob,
+    ref_prior: Prob,
 }
 
 
 impl SampleUnion {
-    pub fn new() -> Self {
+    pub fn new(samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
         SampleUnion {
             samples: vec![],
-            ploidy: 2,
-            heterozygosity: 0.001
+            ploidy: ploidy,
+            heterozygosity: heterozygosity.ln(),
+            ref_prior: (-(1..samples.len() * ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>() * heterozygosity).ln_1p()
         }
     }
 }
@@ -38,13 +40,13 @@ impl SampleUnion {
             self.heterozygosity - (m as Prob).ln()
         }
         else {
-            (1.0 - (1..self.samples.len() * self.ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>()).ln() // +1?
+            self.ref_prior
         }
     }
 
-    fn allelefreq_likelihood(m: usize, sample: usize, likelihoods: &[GenotypeLikelihoods]) -> Prob {
+    fn allelefreq_likelihood(sample: usize, m: usize, likelihoods: &[GenotypeLikelihoods]) -> Prob {
         let lh = likelihoods[sample].with_allelefreq(m);
-        let prior = 1.0 / lh.len() as f64;
+        let prior = (1.0 / lh.len() as f64).ln();
         utils::log_prob_sum(&lh) + prior
     }
 
@@ -61,7 +63,7 @@ impl SampleUnion {
                 for m in 0..self.ploidy + 1 {
                     // the actual index of k - m in our representation of z
                     let km_idx = (if k >= m { k as i32 } else { 0i32 } - m as i32).abs() as usize % (self.ploidy + 1);
-                    p.push(z[j-1][km_idx] + Self::allelefreq_likelihood(m, j, likelihoods));
+                    p.push(z[j-1][km_idx] + Self::allelefreq_likelihood(j - 1, m, likelihoods));
                 }
                 z[j][k_idx] = utils::log_prob_sum(&p);
             }
@@ -79,10 +81,64 @@ impl SampleUnion {
             if k > self.ploidy {
                 z[0][0] = f64::NEG_INFINITY;
             }
-            
-            marginal = utils::log_prob_sum(&[marginal, calc_col(&mut z, k) + self.prior(k)]);
+
+            let likelihood = calc_col(&mut z, k);
+
+            marginal = utils::log_prob_sum(&[marginal, likelihood + self.prior(k)]);
         }
 
+        assert!(marginal <= 0.0);
+
         (ref_likelihood, marginal)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use Prob;
+    use call::site::GenotypeLikelihoods;
+
+    fn setup(n: usize) -> SampleUnion {
+        assert!(n > 0);
+        SampleUnion::new((0..n).collect(), 2, 0.001)
+    }
+
+    fn likelihoods() -> Vec<GenotypeLikelihoods> {
+        vec![ GenotypeLikelihoods::new(vec![(1.0f64).ln(), (0.1f64).ln(), (0.0002f64).ln(), (0.0002f64).ln(), (0.0002f64).ln(), (0.0002f64).ln()], 3) ]
+    }
+
+    fn eq(a: Prob, b: Prob) -> bool {
+        (a - b).abs() < 0.001
+    }
+
+    #[test]
+    fn test_prior() {
+        let epsilon = 0.001;
+
+        assert!(eq(setup(1).prior(0).exp(), 0.998));
+        assert!(eq(setup(200).prior(0).exp(), 0.993));
+
+        let union = setup(1);
+        assert!(eq(union.prior(1).exp(), union.heterozygosity.exp()));
+        assert!(eq(union.prior(2).exp(), union.heterozygosity.exp() / 2.0));
+    }
+
+    #[test]
+    fn test_allelefreq_likelihood() {
+        let likelihoods = likelihoods();
+        assert!(eq(SampleUnion::allelefreq_likelihood(0, 0, &likelihoods).exp(), 1.0));
+        assert!(eq(SampleUnion::allelefreq_likelihood(0, 1, &likelihoods).exp(), 0.0501));
+        assert!(eq(SampleUnion::allelefreq_likelihood(0, 2, &likelihoods).exp(), 0.0002));
+    }
+
+    #[test]
+    fn test_marginal() {
+        let union = setup(1);
+        let likelihoods = likelihoods();
+
+        let (ref_lh, marginal) = union.marginal(&likelihoods);
+        println!("{} {}", ref_lh, marginal);
     }
 }
