@@ -2,7 +2,7 @@ use query::ast::*;
 
 #[pub]
 expr -> Box<Expr>
-        = single_sample / sample_union / diff / union / relaxed_intersection
+        = sample_union / relaxed_intersection / diff / union / single_sample
 
 compl -> Box<Expr>
          = diff / union / relaxed_intersection
@@ -15,10 +15,10 @@ atom -> Box<Expr>
         / "(" expr:relaxed_intersection ")" { expr }
 
 sample -> String
-          = [a-zA-Z0-9_-]+ { match_str.to_string() }
+          = [a-zA-Z0-9_\.]+ { match_str.to_string() }
 
 sample_union -> Box<Expr>
-                = s:sample "+" samples:sample ++ "+" {
+                = s:sample __ "+" __ samples:sample ++ (__ "+" __) {
                     let mut all = vec![s];
                     all.extend(samples);
                     Box::new(Expr::SampleUnion(all))
@@ -28,17 +28,31 @@ single_sample -> Box<Expr>
                  = s:sample { Box::new(Expr::SampleUnion(vec![s])) }
 
 diff -> Box<Expr>
-        = l:atom "-" r:atom { Box::new(Expr::Diff(l, r)) }
+        = l:atom __ "-" __ r:atom { Box::new(Expr::Diff(l, r)) }
 
 union -> Box<Expr>
-         = l:single_sample "+" "(" r:compl ")" { Box::new(Expr::Union(l, r)) }
+         = l:single_sample __ "+" __ "(" __ r:compl __ ")" { Box::new(Expr::Union(l, r)) }
          / "(" l:compl ")" "+" r:single_sample { Box::new(Expr::Union(l, r)) }
          / "(" l:compl ")" "+" "(" r:compl ")" { Box::new(Expr::Union(l, r)) }
 
 relaxed_intersection -> Box<Expr>
-                        = children:atom ++ "x" "with" "k" "=" k:number {
+                        = children:atom ++ (__ "x" __) "with" __ "k" __ "=" __ k:number {
                             Box::new(Expr::RelaxedIntersection(children, k ))
                         }
 
 number -> usize
           = [0-9]+ { match_str.parse().unwrap() }
+
+__ = (whitespace / eol)*
+
+/* Modeled after ECMA-262, 5th ed., 7.3. */
+eol
+    = "\n"
+    / "\r\n"
+    / "\r"
+    / "\u{2028}"
+    / "\u{2029}"
+
+/* Modeled after ECMA-262, 5th ed., 7.2. */
+whitespace
+    = [ \t\u{00A0}\u{FEFF}\u{1680}\u{180E}\u{2000}-\u{200A}\u{202F}\u{205F}\u{3000}] // \v\f removed
