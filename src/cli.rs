@@ -72,11 +72,13 @@ pub fn merge<P: AsRef<Path>>(bcfs: &[P]) {
     let mut merge = process::Command::new("bcftools").arg("merge")
                                    .arg("-O").arg("b")
                                    .arg("-o").arg(&fifo)
+                                   .arg("-m").arg("all")
+                                   .arg("--info-rules").arg("DP:join,VDB:join,RPB:join,MQB:join,BQB:join,MQSB:join,SGB:join,MQ0F:join")
                                    .args(&bcfs.iter().map(|bcf| bcf.as_ref()).collect_vec())
                                    .spawn().ok().expect("Failed to execute bcftools merge.");
     let view = process::Command::new("bcftools").arg("view")
                                    .arg("-O").arg("b")
-                                   .arg("-e").arg("PL[0] == 0")
+                                   .arg("-e").arg("MAX(PL[0]) == 0")
                                    .arg(fifo)
                                    .status().ok().expect("Failed to execute bcftools view.");
 

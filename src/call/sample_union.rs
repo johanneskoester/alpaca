@@ -110,11 +110,11 @@ mod tests {
     }
 
     fn ref_likelihoods() -> Vec<GenotypeLikelihoods> {
-        vec![ GenotypeLikelihoods::new(vec![(1.0f64).ln(), (0.1f64).ln(), (0.0002f64).ln(), (0.0002f64).ln(), (0.0002f64).ln(), (0.0002f64).ln()], 3) ]
+        vec![ GenotypeLikelihoods::new(vec![Some((1.0f64).ln()), Some((0.1f64).ln()), Some((0.0002f64).ln()), Some((0.0002f64).ln()), Some((0.0002f64).ln()), Some((0.0002f64).ln())], 3) ]
     }
 
     fn alt_likelihoods() -> Vec<GenotypeLikelihoods> {
-        vec![ GenotypeLikelihoods::new(vec![167.0 * utils::PHRED_TO_LOG_FACTOR, 0.0, 96.0 * utils::PHRED_TO_LOG_FACTOR], 2) ]
+        vec![ GenotypeLikelihoods::new(vec![Some(167.0 * utils::PHRED_TO_LOG_FACTOR), Some(0.0), Some(96.0 * utils::PHRED_TO_LOG_FACTOR)], 2) ]
     }
 
     fn eq(a: LogProb, b: LogProb) -> bool {
@@ -123,8 +123,6 @@ mod tests {
 
     #[test]
     fn test_prior() {
-        let epsilon = 0.001;
-
         assert!(eq(setup(1).prior(0).exp(), 0.998));
         assert!(eq(setup(200).prior(0).exp(), 0.993));
 

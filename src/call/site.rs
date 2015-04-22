@@ -1,4 +1,3 @@
-
 use htslib::bcf;
 use itertools::Itertools;
 
@@ -21,13 +20,14 @@ impl Site {
         let mut fmt = self.record.format(&b"PL"[..]);
         let pl = try!(fmt.integer());
         Ok(pl.iter().map(|sample_pl| {
-
-            let likelihoods = if sample_pl.iter().any(|&l| l < 0) {
-                vec![]
-            }
-            else {
-                sample_pl.iter().map(|&s| s as LogProb * utils::PHRED_TO_LOG_FACTOR).collect()
-            };
+            let likelihoods = sample_pl.iter().map(|&s| {
+                if s < 0 {
+                    None
+                }
+                else {
+                    Some(s as LogProb * utils::PHRED_TO_LOG_FACTOR)
+                }
+            }).collect();
 
             GenotypeLikelihoods::new(likelihoods, allele_count)
         }).collect())
@@ -59,46 +59,50 @@ impl Site {
 
 
 pub struct GenotypeLikelihoods {
-    likelihoods: Vec<LogProb>,
+    likelihoods: Vec<Option<LogProb>>,
     allele_count: usize,
+    unknown: bool,
 }
 
 
 impl GenotypeLikelihoods {
-    pub fn new(likelihoods: Vec<LogProb>, allele_count: usize) -> Self {
-        GenotypeLikelihoods { likelihoods: likelihoods, allele_count: allele_count }
+    pub fn new(likelihoods: Vec<Option<LogProb>>, allele_count: usize) -> Self {
+        let unknown = likelihoods.iter().all(|l| l.is_none());
+        GenotypeLikelihoods { likelihoods: likelihoods, allele_count: allele_count, unknown: unknown }
     }
 
     pub fn with_allelefreq(&self, m: usize) -> Vec<LogProb> {
         let idx = |j, k| (k * (k + 1) / 2) + j;
         match m {
-            _ if self.likelihoods.is_empty() => vec![0.0], // zero coverage, all likelihoods are 1
-            0 => vec![self.likelihoods[0]],
-            1 => (1..self.allele_count).map(|k| self.likelihoods[idx(0, k)]).collect(),
+            // in case of no coverage, all log-likelihoods are 0
+            _ if self.unknown => vec![0.0],
+            // if ref is unknown, we always assume a log-likelihood of 0
+            0 => vec![ self.likelihoods[0].expect("Bug: reference likelihood can only be unknown if all likelihoods are unknown.") ],  
+            // in the other cases, filter out unknown genotypes.
+            1 => (1..self.allele_count).filter_map(|k| self.likelihoods[idx(0, k)]).collect(),
             2 => (1..self.allele_count).cartesian_product(1..self.allele_count)
-                                       .map(|(j, k)| self.likelihoods[idx(j, k)]).collect(),
+                                       .filter_map(|(j, k)| self.likelihoods[idx(j, k)]).collect(),
             _ => panic!("Bug: Expecting diploid samples.")
         }
     }
 
     pub fn maximum_likelihood_genotype(&self) -> (i32, i32) {
-        if self.likelihoods.is_empty() {
-            (-1, -1)
+        // TODO generalize for any ploidy
+        if self.unknown {
+            return (0, 0);
         }
-        else {
-            // TODO generalize for any ploidy
-            let (mut j, mut k) = (0, 0);
-            for &l in self.likelihoods.iter() {
-                if l == 0.0 {
-                    return (j, k);
-                }
-                j += 1;
-                if j > k {
-                    k += 1;
-                    j = 0;
-                }
+
+        let (mut j, mut k) = (0, 0);
+        for &l in self.likelihoods.iter() {
+            if !l.is_none() && l.unwrap() == 0.0 {
+                return (j, k);
             }
-            panic!("Bug: no likelihood of zero found.");
+            j += 1;
+            if j > k {
+                k += 1;
+                j = 0;
+            }
         }
+        panic!("Bug: no likelihood of zero found.");
     }
 }
