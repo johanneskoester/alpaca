@@ -17,5 +17,4 @@ pub const EPSILON: Prob = 0.000001;
 pub mod call;
 pub mod utils;
 pub mod query;
-pub mod io;
 pub mod cli;

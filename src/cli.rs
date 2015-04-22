@@ -1,6 +1,7 @@
 use std::convert::AsRef;
 use std::path::Path;
 use std::process;
+use std::fs;
 
 use tempdir;
 use itertools::Itertools;
@@ -10,7 +11,6 @@ use bio;
 
 use Prob;
 use call;
-use io;
 use query;
 
 
@@ -29,17 +29,31 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
     {
         let mut pool = simple_parallel::Pool::new(threads);
         let mpileup = |seq: &String| {
-            let fifo = tmp.path().join(seq).with_extension("bcf");
-            mkfifo(fifo.as_path());
-            (process::Command::new("samtools").arg("mpileup")
-                                             .arg("-r").arg(seq).arg("-f").arg(fasta.as_ref())
-                                             .arg("-g").arg("-u").arg("-o").arg(fifo.as_path())
+            fs::create_dir(tmp.path().join(seq)).ok().expect("Error creating temporary directory.");
+            let fifo_mpileup = tmp.path().join(seq).join("mpileup").with_extension("bcf");
+            mkfifo(fifo_mpileup.as_path());
+            let fifo_ann = tmp.path().join(seq).join("annotate").with_extension("bcf");
+            mkfifo(fifo_ann.as_path());
+
+            let mpileup = process::Command::new("samtools").arg("mpileup")
+                                             .arg("-r").arg(seq)
+                                             .arg("-f").arg(fasta.as_ref())
+                                             .arg("-g").arg("-u")
+                                             .arg("-o").arg(&fifo_mpileup)
                                              .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
-                                             .spawn().ok().expect("Failed to execute samtools mpileup."), fifo)
+                                             .spawn().ok().expect("Failed to execute samtools mpileup.");
+            let ann = process::Command::new("bcftools").arg("annotate")
+                                   .arg("-O").arg("u")
+                                   .arg("-o").arg(&fifo_ann)
+                                   .arg("--remove").arg("INFO/INDEL,INFO/IDV,INFO/IMF,INFO/I16,INFO/QS")
+                                   .arg(fifo_mpileup)
+                                   .spawn().ok().expect("Failed to execute bcftools annotate.");
+
+            (mpileup, ann, fifo_ann)
         };
 
         let mut writer = vec![]; // ugly hack, try Option once it works here.
-        for (process, fifo) in pool.map(seqs.iter(), &mpileup) {
+        for (mpileup, ann, fifo) in pool.map(seqs.iter(), &mpileup) {
             let reader = bcf::Reader::new(&fifo);
             
             if writer.is_empty() {
@@ -66,12 +80,12 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
 
 pub fn merge<P: AsRef<Path>>(bcfs: &[P]) {
     let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
-    let fifo = tmp.path().join("merge").with_extension("bcf");
-    mkfifo(fifo.as_path());
+    let fifo_merge = tmp.path().join("merge").with_extension("bcf");
+    mkfifo(fifo_merge.as_path());
 
     let mut merge = process::Command::new("bcftools").arg("merge")
-                                   .arg("-O").arg("b")
-                                   .arg("-o").arg(&fifo)
+                                   .arg("-O").arg("u")
+                                   .arg("-o").arg(&fifo_merge)
                                    .arg("-m").arg("all")
                                    .arg("--info-rules").arg("DP:join,VDB:join,RPB:join,MQB:join,BQB:join,MQSB:join,SGB:join,MQ0F:join")
                                    .args(&bcfs.iter().map(|bcf| bcf.as_ref()).collect_vec())
@@ -79,8 +93,9 @@ pub fn merge<P: AsRef<Path>>(bcfs: &[P]) {
     let view = process::Command::new("bcftools").arg("view")
                                    .arg("-O").arg("b")
                                    .arg("-e").arg("MAX(PL[0]) == 0")
-                                   .arg(fifo)
+                                   .arg(fifo_merge)
                                    .status().ok().expect("Failed to execute bcftools view.");
+
 
     if !merge.wait().ok().expect("Error retrieving exit status.").success() {
         panic!("Error during execution of bcftools merge (see above).");
@@ -98,9 +113,13 @@ pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
     let query_caller = query::parse(query, &sample_idx, heterozygosity);
 
     let mut header = bcf::Header::with_template(&inbcf.header);
-    header.push_record(b"##FORMAT=<ID=GT,Number=2,Type=Integer,Description=\"Genotype\">"); // TODO generalize ploidy
+    header.push_record(b"##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
     let mut outbcf = bcf::Writer::new(&"-", &header, false, false);
 
-    let calls = call::call(&mut inbcf, query_caller, fdr, threads);
-    io::write(&mut outbcf, calls);
+    let mut calls = call::call(&mut inbcf, query_caller, fdr, threads);
+
+    for (site, prob) in calls.drain() {
+        let record = site.into_record(prob, &outbcf.header);
+        outbcf.write(&record).ok().expect("Error writing calls.");
+    }
 }
