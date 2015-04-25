@@ -16,3 +16,18 @@ git = "https://github.com/christopher-schroeder/rust-htslib.git"
 
 [dependencies.bio]
 git = "https://github.com/johanneskoester/rust-bio.git"
+
+[[bin]]
+name = "alpaca-preprocess"
+test = false
+doc = false
+
+[[bin]]
+name = "alpaca-merge"
+test = false
+doc = false
+
+[[bin]]
+name = "alpaca-call"
+test = false
+doc = false

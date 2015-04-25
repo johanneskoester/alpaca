@@ -137,8 +137,6 @@ mod tests {
         assert!(eq(SampleUnion::allelefreq_likelihood(0, 0, &likelihoods).exp(), 1.0));
         assert!(eq(SampleUnion::allelefreq_likelihood(0, 1, &likelihoods).exp(), 0.0501));
         assert!(eq(SampleUnion::allelefreq_likelihood(0, 2, &likelihoods).exp(), 0.0002));
-
-        let alt_likelihoods = alt_likelihoods();
         println!("alt lh {}", SampleUnion::allelefreq_likelihood(0, 1, &likelihoods).exp());
     }
 

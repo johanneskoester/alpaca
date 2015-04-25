@@ -2,7 +2,6 @@ use std::convert::AsRef;
 use std::path::Path;
 use std::process;
 use std::fs;
-use std::collections::HashSet;
 
 use tempdir;
 use itertools::Itertools;
@@ -54,7 +53,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
         };
 
         let mut writer = vec![]; // ugly hack, try Option once it works here.
-        for (mpileup, ann, fifo) in pool.map(seqs.iter(), &mpileup) {
+        for (mut mpileup, mut ann, fifo) in pool.map(seqs.iter(), &mpileup) {
             let reader = bcf::Reader::new(&fifo);
             
             if writer.is_empty() {
@@ -70,9 +69,12 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
                     Err(bcf::ReadError::NoMoreRecord) => break
                 }
             }
-            //if !process.wait().ok().expect("Error retrieving exit status.").success() {
-            //    panic!("Error during execution of samtools mpileup (see above).");
-            //}
+            if !mpileup.wait().ok().expect("Error retrieving exit status.").success() {
+                panic!("Error during execution of samtools mpileup (see above).");
+            }
+            if !ann.wait().ok().expect("Error retrieving exit status.").success() {
+                panic!("Error during execution of bcftools annotate (see above).");
+            }
         }
     }
     tmp.close().ok().expect("Error removing FIFOs.");
@@ -88,7 +90,7 @@ pub fn merge<P: AsRef<Path>>(bcfs: &[P]) {
                                    .arg("-O").arg("u")
                                    .arg("-o").arg(&fifo_merge)
                                    .arg("-m").arg("all")
-                                   .arg("--info-rules").arg("DP:join,VDB:join,RPB:join,MQB:join,BQB:join,MQSB:join,SGB:join,MQ0F:join")
+                                   //.arg("--info-rules").arg("DP:join,VDB:join,RPB:join,MQB:join,BQB:join,MQSB:join,SGB:join,MQ0F:join")
                                    .args(&bcfs.iter().map(|bcf| bcf.as_ref()).collect_vec())
                                    .spawn().ok().expect("Failed to execute bcftools merge.");
     let view = process::Command::new("bcftools").arg("view")
@@ -113,19 +115,16 @@ pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
     let sample_idx = query::sample_index(&inbcf);
     let (query_caller, samples) = query::parse(query, &sample_idx, heterozygosity);
 
-    // this currently causes a segmentation fault when subsetting the header with more than one sample
-    let ascii_samples = samples.iter().map(|s| s.as_bytes()).collect_vec();
-    let target_sample_idx: HashSet<_> = samples.iter().map(|s| sample_idx.get(s).unwrap()).cloned().collect();
-
     // create writer
     let mut header = if samples.len() == inbcf.header.sample_count() as usize {
         bcf::Header::with_template(&inbcf.header)
     }
     else {
-        bcf::Header::subset_template(&inbcf.header, &ascii_samples).ok().expect("Unknown sample name.")
+        bcf::Header::subset_template(
+            &inbcf.header, &samples.iter().map(|s| s.as_bytes()).collect_vec()
+        ).ok().expect("Unknown sample name.")
     };
 
-    //let mut header = bcf::Header::with_template(&inbcf.header);
     header.push_record(b"##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
     let mut outbcf = bcf::Writer::new(&"-", &header, false, false);
 
@@ -134,7 +133,9 @@ pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
     for (mut site, prob) in calls.drain() {
         outbcf.translate(&mut site.record);
         outbcf.subset(&mut site.record);
-        site.update_record(prob, &outbcf.header, &target_sample_idx);
+
+        site.update_record(prob);
+
         //site.record.trim_alleles().ok().expect("Error trimming alleles.");
         outbcf.write(&site.record).ok().expect("Error writing calls.");
     }

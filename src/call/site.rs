@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use htslib::bcf;
 use itertools::Itertools;
 
@@ -36,26 +34,23 @@ impl Site {
     }
 
     /// Update the record with calling information, this has to happen after translate and subset.
-    pub fn update_record(&mut self, prob: LogProb, header: &bcf::header::HeaderView, target_samples: &HashSet<usize>) {
+    pub fn update_record(&mut self, prob: LogProb) {
         let qual = prob * utils::LOG_TO_PHRED_FACTOR;
         self.record.set_qual(qual as f32);
 
         let likelihoods = self.genotype_likelihoods()
             .ok()
             .expect("Bug: Error reading genotype likelihoods, they should have been read before.");
-        let allele_count = self.record.allele_count() as usize;
+        let sample_count = likelihoods.len();
 
-        let mut genotypes = vec![0; target_samples.len() * 2];  // TODO generalize ploidy
+        let mut genotypes = vec![0; sample_count * 2];  // TODO generalize ploidy
 
         let mut i = 0;
-        for sample in 0..self.record.sample_count() as usize {
-            if target_samples.contains(&sample) {
-                let (a, b) = likelihoods[sample].maximum_likelihood_genotype();
-                // as specified in the BCFv2 docs
-                genotypes[i] = (a + 1) << 1;
-                genotypes[i + 1] = (b + 1) << 1;
-                i += 2;
-            }
+        for (a,b) in likelihoods.iter().map(|lh| lh.maximum_likelihood_genotype()) {
+            // as specified in the BCFv2 docs
+            genotypes[i] = (a + 1) << 1;
+            genotypes[i + 1] = (b + 1) << 1;
+            i += 2;
         }
         self.record.push_format_integer(b"GT", &genotypes).ok().expect("Error writing genotype.");
     }
