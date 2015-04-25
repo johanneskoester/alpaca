@@ -114,11 +114,18 @@ pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
     let (query_caller, samples) = query::parse(query, &sample_idx, heterozygosity);
 
     // this currently causes a segmentation fault when subsetting the header with more than one sample
-    //let ascii_samples = samples.iter().map(|s| s.as_bytes()).collect_vec();
-    //let target_sample_idx: HashSet<_> = samples.iter().map(|s| sample_idx.get(s).unwrap()).cloned().collect();
-    //let mut header = bcf::Header::subset_template(&inbcf.header, &ascii_samples).ok().expect("Unknown sample name.");
+    let ascii_samples = samples.iter().map(|s| s.as_bytes()).collect_vec();
+    let target_sample_idx: HashSet<_> = samples.iter().map(|s| sample_idx.get(s).unwrap()).cloned().collect();
 
-    let mut header = bcf::Header::with_template(&inbcf.header);
+    // create writer
+    let mut header = if samples.len() == inbcf.header.sample_count() as usize {
+        bcf::Header::with_template(&inbcf.header)
+    }
+    else {
+        bcf::Header::subset_template(&inbcf.header, &ascii_samples).ok().expect("Unknown sample name.")
+    };
+
+    //let mut header = bcf::Header::with_template(&inbcf.header);
     header.push_record(b"##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
     let mut outbcf = bcf::Writer::new(&"-", &header, false, false);
 
@@ -126,8 +133,8 @@ pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
 
     for (mut site, prob) in calls.drain() {
         outbcf.translate(&mut site.record);
-        //outbcf.subset(&mut site.record);
-        site.update_record(prob, &outbcf.header);
+        outbcf.subset(&mut site.record);
+        site.update_record(prob, &outbcf.header, &target_sample_idx);
         //site.record.trim_alleles().ok().expect("Error trimming alleles.");
         outbcf.write(&site.record).ok().expect("Error writing calls.");
     }

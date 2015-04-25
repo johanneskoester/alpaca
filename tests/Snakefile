@@ -4,12 +4,12 @@ shell.prefix("export PATH=../target/debug:$PATH; ")
 
 
 SAMPLES = {"HG00100": "mpileup.1.bam", "HG00101": "mpileup.2.bam"}
-QUERIES = {"1": "HG00100 - HG00101", "2": "HG00100 - HG00100", "3": "HG00100"}
+QUERIES = {"1": "HG00100 - HG00101", "2": "HG00100"}
 
 
 rule all:
     input:
-        expand("calls.{query}.bcf", query="1 2 3".split()),
+        expand("calls.{query}.bcf", query="1 2".split()),
 
 
 rule test_preprocess:
