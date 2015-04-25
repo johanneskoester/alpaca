@@ -2,6 +2,7 @@ use std::convert::AsRef;
 use std::path::Path;
 use std::process;
 use std::fs;
+use std::collections::HashSet;
 
 use tempdir;
 use itertools::Itertools;
@@ -110,7 +111,12 @@ pub fn merge<P: AsRef<Path>>(bcfs: &[P]) {
 pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
     let mut inbcf = bcf::Reader::new(&"-");
     let sample_idx = query::sample_index(&inbcf);
-    let query_caller = query::parse(query, &sample_idx, heterozygosity);
+    let (query_caller, samples) = query::parse(query, &sample_idx, heterozygosity);
+
+    // this currently causes a segmentation fault when subsetting the header with more than one sample
+    //let ascii_samples = samples.iter().map(|s| s.as_bytes()).collect_vec();
+    //let target_sample_idx: HashSet<_> = samples.iter().map(|s| sample_idx.get(s).unwrap()).cloned().collect();
+    //let mut header = bcf::Header::subset_template(&inbcf.header, &ascii_samples).ok().expect("Unknown sample name.");
 
     let mut header = bcf::Header::with_template(&inbcf.header);
     header.push_record(b"##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
@@ -118,8 +124,11 @@ pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
 
     let mut calls = call::call(&mut inbcf, query_caller, fdr, threads);
 
-    for (site, prob) in calls.drain() {
-        let record = site.into_record(prob, &outbcf.header);
-        outbcf.write(&record).ok().expect("Error writing calls.");
+    for (mut site, prob) in calls.drain() {
+        outbcf.translate(&mut site.record);
+        //outbcf.subset(&mut site.record);
+        site.update_record(prob, &outbcf.header);
+        //site.record.trim_alleles().ok().expect("Error trimming alleles.");
+        outbcf.write(&site.record).ok().expect("Error writing calls.");
     }
 }

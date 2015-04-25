@@ -13,9 +13,9 @@ pub mod ast;
 peg_file! parser("grammar.rustpeg");
 
 
-pub fn parse(query: &str, sample_idx: &HashMap<String, usize>, heterozygosity: Prob) -> Box<call::Caller> {
+pub fn parse(query: &str, sample_idx: &HashMap<String, usize>, heterozygosity: Prob) -> (Box<call::Caller>, Vec<String>) {
     let expr = parser::expr(query).unwrap();
-    expr.caller(sample_idx, heterozygosity)
+    (expr.caller(sample_idx, heterozygosity), expr.samples())
 }
 
 
