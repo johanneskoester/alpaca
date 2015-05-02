@@ -18,6 +18,10 @@ The algebraic query allows to model calling scenarios in a flexible way, e.g.,
 * calling all de-novo mutations of a child: 'child - (mother + father)'
 * calling all variants recurrent in at least 3 samples of a group of samples s1,s2,...s5: 's1 x s2 x s3 x s4 x s5 with k = 3'
 
+A complete description of algebraic variant calling can be found in my thesis
+
+> Köster, J. Parallelization, Scalability, and Reproducibility in Next-Generation Sequencing Analysis. PhD-Thesis, TU Dortmund, Germany 2014. ISBN: 978-3737537773.
+
 ## Example usage:
 
 All in one command:
