@@ -12,13 +12,12 @@ pub use call::relaxed_intersection::RelaxedIntersection;
 pub use call::union::Union;
 pub use call::sample_union::SampleUnion;
 
-use {LogProb, Prob};
+use LogProb;
 use call::site::{Site, GenotypeLikelihoods};
 use utils;
 
 
-pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Prob, threads: usize) -> Vec<(Site, LogProb)> {
-    let log_fdr = fdr.ln();
+pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max_prob: Option<LogProb>, threads: usize) -> Vec<(Site, LogProb)> {
     let mut records = bcf.records();
 
     let mut pool = simple_parallel::Pool::new(threads);
@@ -28,11 +27,20 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Prob, threads: usize
     let mut prob_buffer = Vec::with_capacity(1000);
     let mut candidates = Vec::with_capacity(1000);
 
+    let max_prob = match (fdr, max_prob) {
+        (Some(fdr), Some(p)) => Some(fdr.min(p)),
+        (Some(fdr), None)    => Some(fdr),
+        (None, Some(p))      => Some(p),
+        _                    => None,
+    };
+
     loop {
         site_buffer.extend(records.by_ref().take(1000).map(|record| Site::new(record.ok().expect("Error reading BCF."))));
 
         if site_buffer.is_empty() {
-            control_fdr(&mut candidates, fdr);
+            if fdr.is_some() {
+                control_fdr(&mut candidates, fdr.unwrap());
+            }
             return candidates;
         }
 
@@ -42,19 +50,21 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Prob, threads: usize
             ), &call)
         );
 
-        candidates.extend(site_buffer.drain().zip(prob_buffer.drain()).filter(|&(_, prob)| prob < log_fdr));
+        let buffer = site_buffer.drain().zip(prob_buffer.drain());
+        match max_prob {
+            Some(p) => candidates.extend(buffer.filter(|&(_, prob)| prob < p)),
+            None    => candidates.extend(buffer),
+        }
     }
 }
 
 
-pub fn control_fdr(candidates: &mut Vec<(Site, LogProb)>, fdr: Prob) {
-    let log_fdr = fdr.ln();
-
+fn control_fdr(candidates: &mut Vec<(Site, LogProb)>, fdr: LogProb) {
     let cmp = |a: &LogProb, b: &LogProb| a.partial_cmp(b).expect("Bug: NaN probability found.");
     let mut probs: Vec<LogProb> = candidates.iter().map(|&(_, prob)| prob).collect();
     probs.sort_by(&cmp);
     let exp_fdr = utils::log_prob_cumsum(&probs);
-    let max_prob = match exp_fdr.binary_search_by(|probe| cmp(&probe, &log_fdr)) {
+    let max_prob = match exp_fdr.binary_search_by(|probe| cmp(&probe, &fdr)) {
         Ok(i)           => probs[i],
         Err(i) if i > 0 => probs[i-1],
         _               => 0.0

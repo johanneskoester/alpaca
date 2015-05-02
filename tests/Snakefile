@@ -20,7 +20,7 @@ rule test_preprocess:
         "{sample}.bcf",
     threads: 8
     shell:
-        "alpaca-preprocess -t {threads} {input} > {output}"
+        "alpaca preprocess -t {threads} {input} > {output}"
 
 
 rule test_merge:
@@ -30,7 +30,7 @@ rule test_merge:
     output:
         "all.bcf",
     shell:
-        "alpaca-merge {input.bcf} > {output}"
+        "alpaca merge {input.bcf} | alpaca filter > {output}"
 
 
 rule test_call:
@@ -42,7 +42,7 @@ rule test_call:
         query=lambda wildcards: QUERIES[wildcards.query]
     threads: 8
     shell:
-        "alpaca-call -t {threads} '{params.query}' < {input} > {output}"
+        "alpaca call -t {threads} --fdr 0.05 '{params.query}' < {input} > {output}"
 
 
 rule index_bcf:

@@ -9,9 +9,11 @@ use htslib::bcf;
 use simple_parallel;
 use bio;
 
+use LogProb;
 use Prob;
 use call;
 use query;
+use utils;
 
 
 fn mkfifo<'a>(path: &Path) {
@@ -35,19 +37,21 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
             let fifo_ann = tmp.path().join(seq).join("annotate").with_extension("bcf");
             mkfifo(fifo_ann.as_path());
 
-            let mpileup = process::Command::new("samtools").arg("mpileup")
-                                             .arg("-r").arg(seq)
-                                             .arg("-f").arg(fasta.as_ref())
-                                             .arg("-g").arg("-u")
-                                             .arg("-o").arg(&fifo_mpileup)
-                                             .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
-                                             .spawn().ok().expect("Failed to execute samtools mpileup.");
-            let ann = process::Command::new("bcftools").arg("annotate")
-                                   .arg("-O").arg("u")
-                                   .arg("-o").arg(&fifo_ann)
-                                   .arg("--remove").arg("INFO/INDEL,INFO/IDV,INFO/IMF,INFO/I16,INFO/QS")
-                                   .arg(fifo_mpileup)
-                                   .spawn().ok().expect("Failed to execute bcftools annotate.");
+            let mpileup = process::Command::new("samtools")
+                .arg("mpileup")
+                .arg("-r").arg(seq)
+                .arg("-f").arg(fasta.as_ref())
+                .arg("-g").arg("-u")
+                .arg("-o").arg(&fifo_mpileup)
+                .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
+                .spawn().ok().expect("Failed to execute samtools mpileup.");
+            let ann = process::Command::new("bcftools")
+                .arg("annotate")
+                .arg("-O").arg("u")
+                .arg("-o").arg(&fifo_ann)
+                .arg("--remove").arg("INFO/INDEL,INFO/IDV,INFO/IMF,INFO/I16,INFO/QS")
+                .arg(fifo_mpileup)
+                .spawn().ok().expect("Failed to execute bcftools annotate.");
 
             (mpileup, ann, fifo_ann)
         };
@@ -82,35 +86,27 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
 
 
 pub fn merge<P: AsRef<Path>>(bcfs: &[P]) {
-    let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
-    let fifo_merge = tmp.path().join("merge").with_extension("bcf");
-    mkfifo(fifo_merge.as_path());
-
-    let mut merge = process::Command::new("bcftools").arg("merge")
-                                   .arg("-O").arg("u")
-                                   .arg("-o").arg(&fifo_merge)
-                                   .arg("-m").arg("all")
-                                   //.arg("--info-rules").arg("DP:join,VDB:join,RPB:join,MQB:join,BQB:join,MQSB:join,SGB:join,MQ0F:join")
-                                   .args(&bcfs.iter().map(|bcf| bcf.as_ref()).collect_vec())
-                                   .spawn().ok().expect("Failed to execute bcftools merge.");
-    let view = process::Command::new("bcftools").arg("view")
-                                   .arg("-O").arg("b")
-                                   .arg("-e").arg("MAX(PL[0]) == 0")
-                                   .arg(fifo_merge)
-                                   .status().ok().expect("Failed to execute bcftools view.");
-
-
-    if !merge.wait().ok().expect("Error retrieving exit status.").success() {
-        panic!("Error during execution of bcftools merge (see above).");
-    }
-    if !view.success() {
-        panic!("Error during execution of bcftools view (see above).");
-    }
-    tmp.close().ok().expect("Error removing FIFO.");
+    process::Command::new("bcftools")
+        .arg("merge")
+        .arg("-O").arg("u")
+        .arg("-m").arg("all")
+        //.arg("--info-rules").arg("DP:join,VDB:join,RPB:join,MQB:join,BQB:join,MQSB:join,SGB:join,MQ0F:join")
+        .args(&bcfs.iter().map(|bcf| bcf.as_ref()).collect_vec())
+        .status().ok().expect("Failed to execute bcftools merge.");
 }
 
 
-pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
+pub fn filter() {
+    process::Command::new("bcftools")
+       .arg("view")
+       .arg("-O").arg("b")
+       .arg("-e").arg("MAX(PL[0]) == 0")
+       .arg("-")
+       .status().ok().expect("Failed to execute bcftools view.");
+}
+
+
+pub fn call(query: &str, fdr: Option<LogProb>, max_prob: Option<LogProb>, heterozygosity: Prob, threads: usize) {
     let mut inbcf = bcf::Reader::new(&"-");
     let sample_idx = query::sample_index(&inbcf);
     let (query_caller, samples) = query::parse(query, &sample_idx, heterozygosity);
@@ -125,10 +121,21 @@ pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
         ).ok().expect("Unknown sample name.")
     };
 
+    // update header
     header.push_record(b"##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+    header.push_record(format!("##alpaca_query={}", query).as_bytes());
+    if fdr.is_some() {
+        header.push_record(format!("##alpaca_fdr={}", fdr.unwrap()).as_bytes());
+    }
+    if max_prob.is_some() {
+        header.push_record(format!("##alpaca_min_qual={}", max_prob.unwrap() * utils::LOG_TO_PHRED_FACTOR).as_bytes());
+    }    
+    header.push_record(format!("##alpaca_heterozygosity={}", heterozygosity).as_bytes());
+
     let mut outbcf = bcf::Writer::new(&"-", &header, false, false);
 
-    let mut calls = call::call(&mut inbcf, query_caller, fdr, threads);
+    // perform the calling
+    let mut calls = call::call(&mut inbcf, query_caller, fdr, max_prob, threads);
 
     for (mut site, prob) in calls.drain() {
         outbcf.translate(&mut site.record);
@@ -136,6 +143,7 @@ pub fn call(query: &str, fdr: Prob, threads: usize, heterozygosity: Prob) {
 
         site.update_record(prob);
 
+        // TODO trim alleles causes a segfault
         //site.record.trim_alleles().ok().expect("Error trimming alleles.");
         outbcf.write(&site.record).ok().expect("Error writing calls.");
     }
