@@ -22,6 +22,8 @@ A complete description of algebraic variant calling can be found in my thesis
 
 > Köster, J. Parallelization, Scalability, and Reproducibility in Next-Generation Sequencing Analysis. PhD-Thesis, TU Dortmund, Germany 2014. ISBN: 978-3737537773.
 
+If you use ALPACA, please cite the thesis for now.
+
 ## Example usage:
 
 All in one command:
