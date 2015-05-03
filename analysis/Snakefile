@@ -827,7 +827,7 @@ rule alpaca_call:
         "benchmarks/alpaca/{filter}/{query}.call.json"
     shell:
         "alpaca call --threads {threads} "
-        "'{wildcards.query}' {params.filter} < {input} > '{output}' 2> '{log}'"
+        "'{wildcards.query}' {params.filter} < {input} | bcftools view - > '{output}' 2> '{log}'"
 
         
 ##################################### GATK #####################################
