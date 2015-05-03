@@ -137,7 +137,7 @@ pub fn call(query: &str, fdr: Option<LogProb>, max_prob: Option<LogProb>, hetero
     // perform the calling
     let mut calls = call::call(&mut inbcf, query_caller, fdr, max_prob, threads);
 
-    for (mut site, prob) in calls.drain() {
+    for (mut site, prob) in calls.drain(..) {
         outbcf.translate(&mut site.record);
         outbcf.subset(&mut site.record);
 
