@@ -50,7 +50,7 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max
             ), &call)
         );
 
-        let buffer = site_buffer.drain().zip(prob_buffer.drain());
+        let buffer = site_buffer.drain(..).zip(prob_buffer.drain(..));
         match max_prob {
             Some(p) => candidates.extend(buffer.filter(|&(_, prob)| prob < p)),
             None    => candidates.extend(buffer),
