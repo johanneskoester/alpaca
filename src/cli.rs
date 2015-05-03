@@ -47,7 +47,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
                 .spawn().ok().expect("Failed to execute samtools mpileup.");
             let mut ann = process::Command::new("bcftools")
                 .arg("annotate")
-                .arg("-O").arg("u")
+                .arg("-O").arg("b")
                 .arg("-o").arg(&fifo_ann)
                 .arg("--remove").arg("INFO/INDEL,INFO/IDV,INFO/IMF,INFO/I16,INFO/QS")
                 .arg(fifo_mpileup)
