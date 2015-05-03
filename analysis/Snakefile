@@ -803,7 +803,6 @@ rule alpaca_merge_two:
         )
     output:
         "alpaca/A0+A1.bcf"
-    threads: 12
     resources: benchmark=100
     log:
         "logs/alpaca/A0+A1.merge.log"
