@@ -140,6 +140,8 @@ def expand_samples_from_query(pattern, filter_only=False, call_only=False, orig_
 
 include:
     "https://bitbucket.org/johanneskoester/snakemake-workflows/raw/master/bio/ngs/rules/mapping/samfiles.rules"
+include:
+    "https://bitbucket.org/johanneskoester/snakemake-workflows/raw/master/bio/ngs/rules/variant_calling/bcftools.rules"
 
 
 target_specificity =  expand(
@@ -769,8 +771,12 @@ rule alpaca_preprocess:
 
 rule alpaca_merge:
     input:
-        lambda wildcards: expand(
+        bcf=lambda wildcards: expand(
             "alpaca/{sample}.preprocessed.bcf",
+            sample=config["samples"].values()
+        ),
+        csi=lambda wildcards: expand(
+            "alpaca/{sample}.preprocessed.bcf.csi",
             sample=config["samples"].values()
         )
     output:
@@ -782,13 +788,17 @@ rule alpaca_merge:
     benchmark:
         "benchmarks/alpaca/merge.json"
     shell:
-        "(alpaca merge {input} | alpaca filter > {output}) 2> {log}"
+        "(alpaca merge {input.bcf} | alpaca filter > {output}) 2> {log}"
 
 
 rule alpaca_merge_two:
     input:
-        lambda wildcards: expand(
+        bcf=lambda wildcards: expand(
             "alpaca/{sample}.preprocessed.bcf",
+            sample=[config["samples"]["A0"], config["samples"]["A1"]]
+        ),
+        csi=lambda wildcards: expand(
+            "alpaca/{sample}.preprocessed.bcf.csi",
             sample=[config["samples"]["A0"], config["samples"]["A1"]]
         )
     output:
