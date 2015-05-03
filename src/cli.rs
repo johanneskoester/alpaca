@@ -2,6 +2,7 @@ use std::convert::AsRef;
 use std::path::Path;
 use std::process;
 use std::fs;
+use std::io::Write;
 
 use tempdir;
 use itertools::Itertools;
@@ -35,7 +36,6 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
             let fifo_mpileup = tmp.path().join(seq).join("mpileup").with_extension("bcf");
             mkfifo(fifo_mpileup.as_path());
             let fifo_ann = tmp.path().join(seq).join("annotate").with_extension("bcf");
-            mkfifo(fifo_ann.as_path());
 
             let mpileup = process::Command::new("samtools")
                 .arg("mpileup")
@@ -58,6 +58,13 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
 
         let mut writer = vec![]; // ugly hack, try Option once it works here.
         for (mut mpileup, mut ann, fifo) in pool.map(seqs.iter(), &mpileup) {
+            if !mpileup.wait().ok().expect("Error retrieving exit status.").success() {
+                panic!("Error during execution of samtools mpileup (see above).");
+            }
+            if !ann.wait().ok().expect("Error retrieving exit status.").success() {
+                panic!("Error during execution of bcftools annotate (see above).");
+            }            
+
             let reader = bcf::Reader::new(&fifo);
             
             if writer.is_empty() {
@@ -73,12 +80,8 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
                     Err(bcf::ReadError::NoMoreRecord) => break
                 }
             }
-            if !mpileup.wait().ok().expect("Error retrieving exit status.").success() {
-                panic!("Error during execution of samtools mpileup (see above).");
-            }
-            if !ann.wait().ok().expect("Error retrieving exit status.").success() {
-                panic!("Error during execution of bcftools annotate (see above).");
-            }
+            // remove the file buffer
+            fs::remove_file(fifo).ok().expect("Failed to remove buffer.");
         }
     }
     tmp.close().ok().expect("Error removing FIFOs.");
