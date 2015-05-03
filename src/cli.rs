@@ -37,7 +37,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
             mkfifo(fifo_mpileup.as_path());
             let fifo_ann = tmp.path().join(seq).join("annotate").with_extension("bcf");
 
-            let mpileup = process::Command::new("samtools")
+            let mut mpileup = process::Command::new("samtools")
                 .arg("mpileup")
                 .arg("-r").arg(seq)
                 .arg("-f").arg(fasta.as_ref())
@@ -45,7 +45,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
                 .arg("-o").arg(&fifo_mpileup)
                 .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
                 .spawn().ok().expect("Failed to execute samtools mpileup.");
-            let ann = process::Command::new("bcftools")
+            let mut ann = process::Command::new("bcftools")
                 .arg("annotate")
                 .arg("-O").arg("u")
                 .arg("-o").arg(&fifo_ann)
@@ -53,18 +53,18 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
                 .arg(fifo_mpileup)
                 .spawn().ok().expect("Failed to execute bcftools annotate.");
 
-            (mpileup, ann, fifo_ann)
-        };
-
-        let mut writer = vec![]; // ugly hack, try Option once it works here.
-        for (mut mpileup, mut ann, fifo) in pool.map(seqs.iter(), &mpileup) {
             if !mpileup.wait().ok().expect("Error retrieving exit status.").success() {
                 panic!("Error during execution of samtools mpileup (see above).");
             }
             if !ann.wait().ok().expect("Error retrieving exit status.").success() {
                 panic!("Error during execution of bcftools annotate (see above).");
-            }            
+            }
 
+            fifo_ann
+        };
+
+        let mut writer = vec![]; // ugly hack, try Option once it works here.
+        for fifo in pool.map(seqs.iter(), &mpileup) {
             let reader = bcf::Reader::new(&fifo);
             
             if writer.is_empty() {
