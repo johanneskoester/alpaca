@@ -3,6 +3,7 @@ use std::path::Path;
 use std::process;
 use std::fs;
 use std::io::Write;
+use std::cmp;
 
 use tempdir;
 use itertools::Itertools;
@@ -30,7 +31,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
 
     let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
     {
-        let mut pool = simple_parallel::Pool::new(threads);
+        let mut pool = simple_parallel::Pool::new(cmp::max(1, threads - threads / 4));
         let mpileup = |seq: &String| {
             fs::create_dir(tmp.path().join(seq)).ok().expect("Error creating temporary directory.");
             let fifo_mpileup = tmp.path().join(seq).join("mpileup").with_extension("bcf");
