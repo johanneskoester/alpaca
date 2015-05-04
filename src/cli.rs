@@ -66,7 +66,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
         }
     };
 
-    mapreduce(&seqs, cmp::max(1, threads - threads / 4), mpileup);
+    mapreduce(&seqs, threads, mpileup);
 }
 
 
