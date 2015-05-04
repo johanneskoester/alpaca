@@ -4,6 +4,7 @@
 #![feature(collections)]
 #![feature(str_char)]
 #![feature(collections_drain)]
+#![feature(step_by)]
 
 extern crate itertools;
 extern crate simple_parallel;
