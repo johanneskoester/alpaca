@@ -37,42 +37,46 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
     let mpileup = |tmp: &Path, region: &str| {
         let tmp = tmp.join(region);
         fs::create_dir(&tmp).ok().expect("Error creating temporary directory.");
-        let fifo_mpileup = tmp.join("mpileup").with_extension("bcf");
-        mkfifo(fifo_mpileup.as_path());
-        let fifo_ann = tmp.join("annotate").with_extension("bcf");
-        mkfifo(fifo_ann.as_path());
+        let fifo = tmp.join("mpileup").with_extension("bcf");
+        mkfifo(fifo.as_path());
+        let bcf = tmp.join("annotate").with_extension("bcf");
 
-        let mpileup = process::Command::new("samtools")
+        let mut mpileup = process::Command::new("samtools")
             .arg("mpileup")
             .arg("-r").arg(region)
             .arg("-f").arg(fasta.as_ref())
             .arg("-g").arg("-u")
             .arg("-t").arg("DP")
-            .arg("-o").arg(&fifo_mpileup)
+            .arg("-o").arg(&fifo)
             .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
             .spawn().ok().expect("Failed to execute samtools mpileup.");
-        let ann = process::Command::new("bcftools")
+        let mut ann = process::Command::new("bcftools")
             .arg("annotate")
             .arg("-O").arg("b")
-            .arg("-o").arg(&fifo_ann)
+            .arg("-o").arg(&bcf)
             .arg("--remove").arg("INFO/INDEL,INFO/IDV,INFO/IMF,INFO/I16,INFO/QS,INFO/DP")
-            .arg(&fifo_mpileup)
+            .arg(&fifo)
             .spawn().ok().expect("Failed to execute bcftools annotate.");
 
+        if !mpileup.wait().ok().expect("Failed to get status.").success() {
+            panic!("Error during execution of samtools mpileup.")
+        }
+        if !ann.wait().ok().expect("Failed to get status.").success() {
+            panic!("Error during execution of bcftools annotate.")
+        }
+
         KernelResult {
-            reader: bcf::Reader::new(&fifo_ann),
-            procs: vec![mpileup, ann],
+            reader: bcf::Reader::new(&bcf),
             tmp: tmp,
         }
     };
 
-    mapreduce(&seqs, cmp::max(1, threads - threads / 4), mpileup);
+    mapreduce(&seqs, threads, mpileup);
 }
 
 
 struct KernelResult {
     reader: bcf::Reader,
-    procs: Vec<process::Child>,
     tmp: PathBuf,
 }
 
@@ -80,11 +84,6 @@ struct KernelResult {
 impl Drop for KernelResult {
     fn drop(&mut self) {
         fs::remove_dir_all(&self.tmp).ok().expect("Failed to remove temp dir.");
-        for mut p in self.procs.iter_mut() {
-            if !p.wait().ok().expect("Failed to retrieve exit status.").success() {
-                panic!("Error executing child process (see above).");
-            }
-        }
     }
 }
 
@@ -141,10 +140,9 @@ pub fn merge<P: AsRef<Path> + Sync>(fasta: &P, bcfs: &[P], threads: usize) {
         fs::create_dir(&tmp).ok().expect("Error creating temporary directory.");
         let fifo_merge = tmp.join("mpileup").with_extension("bcf");
         mkfifo(fifo_merge.as_path());
-        let fifo_filter = tmp.join("annotate").with_extension("bcf");
-        mkfifo(fifo_filter.as_path());
+        let bcf = tmp.join("annotate").with_extension("bcf");
 
-        let merge = process::Command::new("bcftools")
+        let mut merge = process::Command::new("bcftools")
             .arg("merge")
             .arg("-r").arg(region)
             .arg("-O").arg("u")
@@ -153,14 +151,21 @@ pub fn merge<P: AsRef<Path> + Sync>(fasta: &P, bcfs: &[P], threads: usize) {
             .args(&bcfs.iter().map(|bcf| bcf.as_ref()).collect_vec())
             .spawn().ok().expect("Failed to execute bcftools merge.");
 
-        let filter = filter_cmd()
-            .arg("-o").arg(&fifo_filter)
+        let mut filter = filter_cmd()
+            .arg("-o").arg(&bcf)
             .arg(&fifo_merge)
             .spawn().ok().expect("Failed to execute bcftools view.");
 
+
+        if !merge.wait().ok().expect("Failed to get status.").success() {
+            panic!("Error during execution of bcftools merge.")
+        }
+        if !filter.wait().ok().expect("Failed to get status.").success() {
+            panic!("Error during execution of bcftools filter.")
+        }
+
         KernelResult {
-            reader: bcf::Reader::new(&fifo_filter),
-            procs: vec![merge, filter],
+            reader: bcf::Reader::new(&bcf),
             tmp: tmp,
         }
     };
