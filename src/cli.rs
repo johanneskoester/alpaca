@@ -70,14 +70,14 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
         (reader, records)
     };
 
-    mapreduce(&seqs, threads, mpileup);
+    mapreduce(&seqs, cmp::max(1, threads - threads / 4), mpileup);
 }
 
 
 fn mapreduce<F: Sync>(seqs: &[String], threads: usize, kernel: F) where F: Fn(&Path, &str) -> (bcf::Reader, Vec<bcf::Record>) {
     let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
     {
-        let mut pool = simple_parallel::Pool::new(cmp::max(1, threads - threads / 4));
+        let mut pool = simple_parallel::Pool::new(threads);
 
         let apply = |seq: &String| kernel(tmp.path(), seq);
 
