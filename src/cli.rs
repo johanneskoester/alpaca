@@ -1,5 +1,5 @@
 use std::convert::AsRef;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::fs;
 use std::io::Write;
@@ -35,10 +35,11 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
     let seqs = seqs(fasta);
 
     let mpileup = |tmp: &Path, region: &str| {
-        fs::create_dir(tmp.join(region)).ok().expect("Error creating temporary directory.");
-        let fifo_mpileup = tmp.join(region).join("mpileup").with_extension("bcf");
+        let tmp = tmp.join(region);
+        fs::create_dir(&tmp).ok().expect("Error creating temporary directory.");
+        let fifo_mpileup = tmp.join("mpileup").with_extension("bcf");
         mkfifo(fifo_mpileup.as_path());
-        let fifo_ann = tmp.join(region).join("annotate").with_extension("bcf");
+        let fifo_ann = tmp.join("annotate").with_extension("bcf");
         mkfifo(fifo_ann.as_path());
 
         let mpileup = process::Command::new("samtools")
@@ -55,17 +56,40 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
             .arg("-O").arg("b")
             .arg("-o").arg(&fifo_ann)
             .arg("--remove").arg("INFO/INDEL,INFO/IDV,INFO/IMF,INFO/I16,INFO/QS,INFO/DP")
-            .arg(fifo_mpileup)
+            .arg(&fifo_mpileup)
             .spawn().ok().expect("Failed to execute bcftools annotate.");
 
-        (bcf::Reader::new(&fifo_ann), vec![mpileup, ann])
+        KernelResult {
+            reader: bcf::Reader::new(&fifo_ann),
+            procs: vec![mpileup, ann],
+            tmp: tmp,
+        }
     };
 
     mapreduce(&seqs, cmp::max(1, threads - threads / 4), mpileup);
 }
 
 
-fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel: F) where F: Fn(&Path, &str) -> (bcf::Reader, Vec<process::Child>) {
+struct KernelResult {
+    reader: bcf::Reader,
+    procs: Vec<process::Child>,
+    tmp: PathBuf,
+}
+
+
+impl Drop for KernelResult {
+    fn drop(&mut self) {
+        fs::remove_dir_all(&self.tmp).ok().expect("Failed to remove temp dir.");
+        for mut p in self.procs.iter_mut() {
+            if !p.wait().ok().expect("Failed to retrieve exit status.").success() {
+                panic!("Error executing child process (see above).");
+            }
+        }
+    }
+}
+
+
+fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel: F) where F: Fn(&Path, &str) -> KernelResult {
     let rows = 1000000;
     let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
     {
@@ -81,36 +105,31 @@ fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel:
             }
         }
 
-        let mut readers = pool.map(regions.iter(), &apply);
+        let mut results = pool.map(regions.iter(), &apply);
 
-        let (mut reader, mut procs) = readers.next().unwrap();
+        let mut result = results.next().unwrap();
         let mut writer = {
-            let header = bcf::Header::with_template(&reader.header);
+            let header = bcf::Header::with_template(&result.reader.header);
             bcf::Writer::new(&"-", &header, false, false)
         };
 
         let mut record = bcf::Record::new();
         loop {
-            match reader.read(&mut record) {
+            match result.reader.read(&mut record) {
                 Ok(()) => {
                     writer.write(&record).ok().expect("Error writing BCF.");
                 },
                 Err(bcf::ReadError::Invalid) => panic!("Error reading BCF."),
                 Err(bcf::ReadError::NoMoreRecord) => {
-                    for mut p in procs {
-                        if !p.wait().ok().expect("Failed to retrieve exit status.").success() {
-                            panic!("Error executing child process (see above).");
-                        }
-                    }
-                    match readers.next() {
-                        Some((r, ps)) => { reader = r; procs = ps },
+                    match results.next() {
+                        Some(res) => { result = res },
                         None    => break
                     }                    
                 }
             }
         }
     }
-    tmp.close().ok().expect("Error removing FIFOs.");
+    tmp.close().ok().expect("Error removing tmp dir.");
 }
 
 
@@ -118,10 +137,11 @@ pub fn merge<P: AsRef<Path> + Sync>(fasta: &P, bcfs: &[P], threads: usize) {
     let seqs = seqs(fasta);
 
     let merge = |tmp: &Path, region: &str| {
-        fs::create_dir(tmp.join(region)).ok().expect("Error creating temporary directory.");
-        let fifo_merge = tmp.join(region).join("mpileup").with_extension("bcf");
+        let tmp = tmp.join(region);
+        fs::create_dir(&tmp).ok().expect("Error creating temporary directory.");
+        let fifo_merge = tmp.join("mpileup").with_extension("bcf");
         mkfifo(fifo_merge.as_path());
-        let fifo_filter = tmp.join(region).join("annotate").with_extension("bcf");
+        let fifo_filter = tmp.join("annotate").with_extension("bcf");
         mkfifo(fifo_filter.as_path());
 
         let merge = process::Command::new("bcftools")
@@ -138,7 +158,11 @@ pub fn merge<P: AsRef<Path> + Sync>(fasta: &P, bcfs: &[P], threads: usize) {
             .arg(&fifo_merge)
             .spawn().ok().expect("Failed to execute bcftools view.");
 
-        (bcf::Reader::new(&fifo_filter), vec![merge, filter])
+        KernelResult {
+            reader: bcf::Reader::new(&fifo_filter),
+            procs: vec![merge, filter],
+            tmp: tmp,
+        }
     };
     
     mapreduce(&seqs, threads, merge);

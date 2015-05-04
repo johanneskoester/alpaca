@@ -3,7 +3,6 @@ use std::str;
 
 
 use htslib::bcf;
-
 use Prob;
 use call;
 

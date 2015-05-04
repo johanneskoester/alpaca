@@ -65,7 +65,7 @@ impl SampleUnion {
                 for m in 0..self.ploidy + 1 {
                     // the actual index of k - m in our representation of z
                     let km_idx = (if k >= m { k as i32 } else { 0i32 } - m as i32).abs() as usize % (self.ploidy + 1);
-                    p.push(z[j-1][km_idx] + Self::allelefreq_likelihood(j - 1, m, likelihoods));
+                    p.push(z[j-1][km_idx] + Self::allelefreq_likelihood(self.samples[j - 1], m, likelihoods));
                 }
                 z[j][k_idx] = utils::log_prob_sum(&p);
             }
