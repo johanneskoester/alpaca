@@ -116,7 +116,7 @@ pub fn merge<P: AsRef<Path> + Sync>(fasta: &P, bcfs: &[P], threads: usize) {
         let mut merge = process::Command::new("bcftools")
             .arg("merge")
             .arg("-r").arg(seq)
-            .arg("-O").arg("b")
+            .arg("-O").arg("u")
             .arg("-o").arg(&fifo_merge)
             .arg("-m").arg("all")
             .args(&bcfs.iter().map(|bcf| bcf.as_ref()).collect_vec())
