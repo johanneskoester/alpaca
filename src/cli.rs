@@ -89,7 +89,7 @@ impl Drop for KernelResult {
 
 
 fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel: F) where F: Fn(&Path, &str) -> KernelResult {
-    let rows = 1000000;
+    let rows = 10000000;
     let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
     {
         let mut pool = simple_parallel::Pool::new(threads);
