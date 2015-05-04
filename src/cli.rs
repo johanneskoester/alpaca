@@ -66,6 +66,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
 
 
 fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel: F) where F: Fn(&Path, &str) -> (bcf::Reader, Vec<process::Child>) {
+    let rows = 1000000;
     let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
     {
         let mut pool = simple_parallel::Pool::new(threads);
@@ -75,8 +76,8 @@ fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel:
         // create list of regions
         let mut regions: Vec<String> = vec![];
         for seq in seqs {
-            for offset in (1..seq.len + 1).step_by(100000) {
-                regions.push(format!("{}:{}-{}", str::from_utf8(&seq.name).ok().expect("Invalid sequence name."), offset, offset + 100000));
+            for offset in (1..seq.len + 1).step_by(rows) {
+                regions.push(format!("{}:{}-{}", str::from_utf8(&seq.name).ok().expect("Invalid sequence name."), offset, offset + rows));
             }
         }
 
