@@ -771,6 +771,8 @@ rule alpaca_preprocess:
 
 rule alpaca_merge:
     input:
+        ref="ref.fasta",
+        refindex="ref.fasta.fai",
         bcf=lambda wildcards: expand(
             "alpaca/{sample}.preprocessed.bcf",
             sample=config["samples"].values()
@@ -788,11 +790,13 @@ rule alpaca_merge:
     benchmark:
         "benchmarks/alpaca/merge.json"
     shell:
-        "(alpaca merge {input.bcf} | alpaca filter > {output}) 2> {log}"
+        "alpaca merge -t {threads} {input.ref} {input.bcf} > {output} 2> {log}"
 
 
 rule alpaca_merge_two:
     input:
+        ref="ref.fasta",
+        refindex="ref.fasta.fai",
         bcf=lambda wildcards: expand(
             "alpaca/{sample}.preprocessed.bcf",
             sample=[config["samples"]["A0"], config["samples"]["A1"]]
@@ -804,12 +808,13 @@ rule alpaca_merge_two:
     output:
         "alpaca/A0+A1.bcf"
     resources: benchmark=100
+    threads: 12
     log:
         "logs/alpaca/A0+A1.merge.log"
     benchmark:
         "benchmarks/alpaca/A0+A1.merge.json"
     shell:
-        "(alpaca merge {input} | alpaca filter > {output}) 2> {log}"
+        "alpaca merge -t {threads} {input.ref} {input.bcf} > {output} 2> {log}"
 
 
 def alpaca_filter(wildcards):

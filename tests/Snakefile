@@ -25,12 +25,14 @@ rule test_preprocess:
 
 rule test_merge:
     input:
+        fa="mpileup.ref.fa",
         bcf=expand("{sample}.bcf", sample=SAMPLES),
         csi=expand("{sample}.bcf.csi", sample=SAMPLES),
     output:
         "all.bcf",
+    threads: 8
     shell:
-        "alpaca merge {input.bcf} | alpaca filter > {output}"
+        "alpaca merge -t {threads} {input.fa} {input.bcf} > {output}"
 
 
 rule test_call:

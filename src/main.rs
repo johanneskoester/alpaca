@@ -122,7 +122,9 @@ Example: "alpaca preprocess A.bam > A.bcf""#
 
 
 fn merge(args: Vec<String>) {
+    let mut fasta = "".to_string();
     let mut bcfs: Vec<String> = vec![];
+    let mut threads = 1;
     
     {
         let mut ap = ArgumentParser::new();
@@ -133,11 +135,16 @@ prints a merged BCF to STDOUT. For calling, this should be combined
 with alpaca-filter, which removes irrelevant sites.
 Example: "alpaca merge A.bcf B.bcf C.bcf | alpaca filter > merged.bcf"#
         );
+
+        ap.refer(&mut fasta)
+          .add_argument("fasta", Store, "FASTA file with reference genome.");  
         ap.refer(&mut bcfs)
           .add_argument("bcf", List, "ALPACA-preprocessed BCF files to merge.");
+        ap.refer(&mut threads)
+          .add_option(&["--threads", "-t"], Store, "Number of threads to use.");
         parse_args_or_exit(&ap, args);
     }
-    cli::merge(&bcfs);
+    cli::merge(&fasta, &bcfs, threads);
 }
 
 
