@@ -828,9 +828,7 @@ def alpaca_filter(wildcards):
 
 def alpaca_query(wildcards):
     query = wildcards.query
-    for sample, name in config["samples"].items():
-        query = query.replace(sample, " {} ".format(name))
-    return query
+    return re.sub("A[0-9]", lambda m: " {} ".format(config["samples"][m.group()]), query).replace("-(", "- (").replace(")-", ") -")
 
 
 rule alpaca_call:
