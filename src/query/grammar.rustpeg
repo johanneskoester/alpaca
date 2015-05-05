@@ -15,10 +15,10 @@ atom -> Box<Expr>
         / "(" __* expr:relaxed_intersection __* ")" { expr }
 
 sample -> String
-          = [a-zA-Z0-9_\.]+ { match_str.to_string() }
+          = [a-zA-Z0-9_\.-+]+ { match_str.to_string() }
 
 sample_union -> Box<Expr>
-                = s:sample __* "+" __* samples:sample ++ (__* "+" __*) {
+                = s:sample __+ "+" __+ samples:sample ++ (__+ "+" __+) {
                     let mut all = vec![s];
                     all.extend(samples);
                     Box::new(Expr::SampleUnion(all))
@@ -28,12 +28,12 @@ single_sample -> Box<Expr>
                  = s:sample { Box::new(Expr::SampleUnion(vec![s])) }
 
 diff -> Box<Expr>
-        = l:atom __* "-" __* r:atom { Box::new(Expr::Diff(l, r)) }
+        = l:atom __+ "-" __+ r:atom { Box::new(Expr::Diff(l, r)) }
 
 union -> Box<Expr>
-         = l:single_sample __* "+" __* "(" __* r:compl __* ")" { Box::new(Expr::Union(l, r)) }
-         / "(" __* l:compl __* ")" __* "+" __* r:single_sample { Box::new(Expr::Union(l, r)) }
-         / "(" __* l:compl __* ")" __* "+" __* "(" __* r:compl __* ")" { Box::new(Expr::Union(l, r)) }
+         = l:single_sample __+ "+" __+ "(" __* r:compl __* ")" { Box::new(Expr::Union(l, r)) }
+         / "(" __* l:compl __* ")" __+ "+" __+ r:single_sample { Box::new(Expr::Union(l, r)) }
+         / "(" __* l:compl __* ")" __+ "+" __+ "(" __* r:compl __* ")" { Box::new(Expr::Union(l, r)) }
 
 relaxed_intersection -> Box<Expr>
                         = children:atom ++ (__+ "x" __+) __+ "with" __+ "k" __* "=" __* k:number {
