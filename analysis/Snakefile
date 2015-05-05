@@ -826,13 +826,20 @@ def alpaca_filter(wildcards):
     return "--min-qual " + wildcards.filter
 
 
+def alpaca_query(wildcards):
+    query = wildcards.query
+    for sample, name in config["samples"].items():
+        query = query.replace(sample, " {} ".format(name))
+    return query
+
+
 rule alpaca_call:
     input:
         "alpaca/all.bcf"
     output:
         "alpaca/{filter}/{query,[^\.]+}.vcf"
     params:
-        filter=alpaca_filter
+        filter=alpaca_filter, query=alpaca_query
     threads: 12
     resources: benchmark=100
     log:
@@ -841,7 +848,7 @@ rule alpaca_call:
         "benchmarks/alpaca/{filter}/{query}.call.json"
     shell:
         "alpaca call --threads {threads} "
-        "'{wildcards.query}' {params.filter} < {input} | bcftools view - > '{output}' 2> '{log}'"
+        "'{params.query}' {params.filter} < {input} | bcftools view - > '{output}' 2> '{log}'"
 
         
 ##################################### GATK #####################################
