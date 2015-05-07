@@ -88,7 +88,8 @@ impl Drop for KernelResult {
 }
 
 
-fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel: F) where F: Fn(&Path, &str) -> KernelResult {
+fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel: F)
+where F: Fn(&Path, &str) -> KernelResult {
     let rows = 10000000;
     let tmp = tempdir::TempDir::new("alpaca").ok().expect("Cannot create temp dir");
     {
@@ -100,7 +101,13 @@ fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel:
         let mut regions: Vec<String> = vec![];
         for seq in seqs {
             for offset in (1..seq.len + 1).step_by(rows) {
-                regions.push(format!("{}:{}-{}", str::from_utf8(&seq.name).ok().expect("Invalid sequence name."), offset, offset + rows));
+                regions.push(
+                    format!(
+                        "{}:{}-{}",
+                        str::from_utf8(&seq.name).ok().expect("Invalid sequence name."),
+                        offset, offset + rows
+                    )
+                );
             }
         }
 
@@ -123,7 +130,7 @@ fn mapreduce<F: Sync>(seqs: &[bio::io::fasta::Sequence], threads: usize, kernel:
                     match results.next() {
                         Some(res) => { result = res },
                         None    => break
-                    }                    
+                    }
                 }
             }
         }
@@ -169,7 +176,7 @@ pub fn merge<P: AsRef<Path> + Sync>(fasta: &P, bcfs: &[P], threads: usize) {
             tmp: tmp,
         }
     };
-    
+
     mapreduce(&seqs, threads, merge);
 }
 
@@ -191,7 +198,13 @@ pub fn filter() {
 }
 
 
-pub fn call(query: &str, fdr: Option<LogProb>, max_prob: Option<LogProb>, heterozygosity: Prob, threads: usize) {
+pub fn call(
+    query: &str,
+    fdr: Option<LogProb>,
+    max_prob: Option<LogProb>,
+    heterozygosity: Prob,
+    threads: usize
+) {
     let mut inbcf = bcf::Reader::new(&"-");
     let sample_idx = query::sample_index(&inbcf);
     let (query_caller, samples) = query::parse(query, &sample_idx, heterozygosity);
@@ -213,8 +226,13 @@ pub fn call(query: &str, fdr: Option<LogProb>, max_prob: Option<LogProb>, hetero
         header.push_record(format!("##alpaca_fdr={}", fdr.unwrap()).as_bytes());
     }
     if max_prob.is_some() {
-        header.push_record(format!("##alpaca_min_qual={}", max_prob.unwrap() * utils::LOG_TO_PHRED_FACTOR).as_bytes());
-    }    
+        header.push_record(
+            format!(
+                "##alpaca_min_qual={}",
+                max_prob.unwrap() * utils::LOG_TO_PHRED_FACTOR
+            ).as_bytes()
+        );
+    }
     header.push_record(format!("##alpaca_heterozygosity={}", heterozygosity).as_bytes());
 
     let mut outbcf = bcf::Writer::new(&"-", &header, false, false);
