@@ -68,14 +68,16 @@ impl SampleUnion {
                     p.push(z[j-1][km_idx] + Self::allelefreq_likelihood(self.samples[j - 1], m, likelihoods));
                 }
                 z[j][k_idx] = utils::log_prob_sum(&p);
+                assert!(z[j][k_idx] <= 0.0, format!("z[{}][{}] = {} > 0", j, k_idx, z[j][k_idx]));
             }
             z[self.samples.len()][k_idx]
         };
 
-        
+
         // calc column k = 0
         let ref_likelihood = calc_col(&mut z, 0);
         let mut marginal = ref_likelihood + self.prior(0);
+        assert!(marginal <= 0.0, format!("marginal {} > 0", marginal));
 
         for k in 1..self.samples.len() * self.ploidy + 1 {
             // set z00 to 1 (i.e. 0 in log space) while it is possible to achive the allele freq with the first sample only.
@@ -87,9 +89,8 @@ impl SampleUnion {
             let likelihood = calc_col(&mut z, k);
 
             marginal = utils::log_prob_sum(&[marginal, likelihood + self.prior(k)]);
+            assert!(marginal <= 0.0, format!("marginal {} > 0", marginal));
         }
-
-        assert!(marginal < EPSILON, format!("marginal {} > 0", marginal));
 
         (ref_likelihood, marginal)
     }
