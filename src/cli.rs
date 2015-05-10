@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::fs;
 use std::io::Write;
-use std::cmp;
 use std::str;
 
 use tempdir;

@@ -35,6 +35,7 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max
     };
 
     loop {
+        
         site_buffer.extend(records.by_ref().take(1000).map(|record| Site::new(record.ok().expect("Error reading BCF."))));
 
         if site_buffer.is_empty() {
