@@ -31,7 +31,7 @@ pub fn log_prob_add(p0: LogProb, p1: LogProb) -> LogProb {
 
 
 pub fn log_prob_cumsum(probs: &[LogProb]) -> Vec<LogProb> {
-    probs.iter().scan(0.0, |s, p| {
+    probs.iter().scan(f64::NEG_INFINITY, |s, p| {
         *s = log_prob_add(*s, *p);
         Some(*s)
     }).collect()

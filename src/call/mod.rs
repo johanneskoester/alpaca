@@ -1,7 +1,9 @@
 use std::io;
+use std::io::Write;
 
 use simple_parallel;
 use htslib::bcf;
+use itertools::Itertools;
 
 pub mod site;
 pub mod diff;
@@ -23,9 +25,12 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max
     let mut records = bcf.records();
 
     let mut pool = simple_parallel::Pool::new(threads);
-    let call = |likelihoods: Vec<GenotypeLikelihoods>| query.call(&likelihoods);
+    let call = |likelihoods: &[Vec<GenotypeLikelihoods>]| {
+        likelihoods.iter().map(|lh| query.call(lh)).collect_vec()
+    };
 
     let mut site_buffer = Vec::with_capacity(1000);
+    let mut likelihood_buffer = Vec::with_capacity(1000);
     let mut prob_buffer = Vec::with_capacity(1000);
     let mut candidates = Vec::with_capacity(1000);
 
@@ -38,7 +43,11 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max
 
     let mut processed = 0;
     loop {
-        site_buffer.extend(records.by_ref().take(10000).map(|record| Site::new(record.ok().expect("Error reading BCF."))));
+        site_buffer.extend(records.by_ref().take(1000000).map(|record| Site::new(record.ok().expect("Error reading BCF."))));
+        likelihood_buffer.extend(site_buffer.iter_mut().map(|site|
+            site.genotype_likelihoods().ok().expect("Error reading genotype likelihoods.")
+        ));
+
         processed += site_buffer.len();
 
         if site_buffer.is_empty() {
@@ -48,25 +57,24 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max
             return candidates;
         }
 
-        prob_buffer.extend(pool.map(
-            site_buffer.iter_mut().map(
-                |site| site.genotype_likelihoods().ok().expect("Error reading genotype likelihoods.")
-            ), &call)
-        );
+        for probs in pool.map(likelihood_buffer.chunks(1000000 / threads), &call) {
+            prob_buffer.extend(probs);
+        }
 
+        likelihood_buffer.clear();
         let buffer = site_buffer.drain(..).zip(prob_buffer.drain(..));
         match max_prob {
             Some(p) => candidates.extend(buffer.filter(|&(_, prob)| prob < p)),
             None    => candidates.extend(buffer),
         }
-        writeln!(io::stderr(), "Processed {} records.", processed);
+        writeln!(io::stderr(), "Processed {} records.", processed).ok().expect("Error writing to STDERR.");
     }
 }
 
 
 fn control_fdr(candidates: &mut Vec<(Site, LogProb)>, fdr: LogProb) {
     let cmp = |a: &LogProb, b: &LogProb| a.partial_cmp(b).expect("Bug: NaN probability found.");
-    let mut probs: Vec<LogProb> = candidates.iter().map(|&(_, prob)| prob).collect();
+    let mut probs = candidates.iter().map(|&(_, prob)| prob).collect_vec();
     probs.sort_by(&cmp);
     let exp_fdr = utils::log_prob_cumsum(&probs);
     let max_prob = match exp_fdr.binary_search_by(|probe| cmp(&probe, &fdr)) {
