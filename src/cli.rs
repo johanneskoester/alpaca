@@ -46,8 +46,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
             .arg("-f").arg(fasta.as_ref())
             .arg("-g").arg("-u")
             .arg("-t").arg("DP")
-            .arg("-q").arg("17")  // minimum mapping quality
-            .arg("-Q").arg("13")  // minimum base quality
+            .arg("-q").arg("1")  // minimum mapping quality
             .arg("-C").arg("50")  // mapping quality downgrade in case of excessive mismatches
             .arg("-o").arg(&fifo)
             .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
