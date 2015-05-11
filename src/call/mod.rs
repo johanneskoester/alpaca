@@ -1,3 +1,5 @@
+use std::io;
+
 use simple_parallel;
 use htslib::bcf;
 
@@ -34,9 +36,10 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max
         _                    => None,
     };
 
+    let mut processed = 0;
     loop {
-        
-        site_buffer.extend(records.by_ref().take(1000).map(|record| Site::new(record.ok().expect("Error reading BCF."))));
+        site_buffer.extend(records.by_ref().take(10000).map(|record| Site::new(record.ok().expect("Error reading BCF."))));
+        processed += site_buffer.len();
 
         if site_buffer.is_empty() {
             if fdr.is_some() {
@@ -56,6 +59,7 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max
             Some(p) => candidates.extend(buffer.filter(|&(_, prob)| prob < p)),
             None    => candidates.extend(buffer),
         }
+        writeln!(io::stderr(), "Processed {} records.", processed);
     }
 }
 
