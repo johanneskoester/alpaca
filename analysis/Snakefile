@@ -296,7 +296,7 @@ def plot_fpr(f, covered_depths, max_covered_depth, style, label=None, recordfilt
             sum(
                 (call.data.DP if call.data.DP is not None else 0)
                 for call in record.samples
-            ) for record in reader if record.is_snp
+            ) for record in reader
         ])
 
     fp = np.bincount(fp_depths, minlength=max_covered_depth + 1)
@@ -426,16 +426,26 @@ rule sensitivity_false_negatives:
 rule sensitivity_allele_depth:
     input:
         vcf="sensitivity/{status}/{caller}/{query}.vcf",
-        index=lambda wildcards: expand(
-            "alpaca/{sample}.index.gh.hdf5",
+        bam=lambda wildcards: expand(
+            "data/reads/{sample}.bam",
             sample=config["samples"][wildcards.sample]
         )
     output:
         "sensitivity/{status}/{caller}/{query}.{sample}.allele_depth.csv"
-    threads: 12
     resources: benchmark=1
-    shell:
-        "alpaca --threads {threads} peek {input.index} < '{input.vcf}' > '{output}'"
+    run:
+        import pysam
+        bam = pysam.Samfile(str(input.bam), "rb")
+        with open(input.vcf) as f, open(output[0], "w") as out:
+            reader = vcf.Reader(f)
+            for record in reader:
+                try:
+                    n = next(bam.pileup(record.CHROM, record.POS - 1, record.POS, truncate=True)).n
+                except StopIteration:
+                    n = 0
+                print(n, file=out)
+    #shell:
+    #    "samtools mpileup -q 1 --positions '{input.vcf}' {input.bam} | cut -f4 > '{output}'"
 
 
 def sensitivity_expand_called_samples(pattern):
@@ -459,19 +469,16 @@ rule sensitivity_depth:
     output:
         "sensitivity/{status}/{caller}/{query}.depth.csv"
     params:
-        pipes=sensitivity_expand_called_samples(
-            # cut the third column since it contains the overall depth
-            "<( cut -f 3 'sensitivity/{status}/{caller}/{query}.{sample}.allele_depth.csv')"
-        )
+        input=sensitivity_expand_called_samples("'sensitivity/{status}/{caller}/{query}.{sample}.allele_depth.csv'")
     resources: benchmark=1
     shell:
-        # paste the 3rd columns into one file
-        "paste {params.pipes} > '{output}'"
+        # paste into one file
+        "paste {params.input} > '{output}'"
 
 
 def plot_sensitivity(tp_file, fn_file, style, label=None):
     def sum_depths(f):
-        d = np.loadtxt(f, skiprows=1, dtype=np.int32)
+        d = np.loadtxt(f, dtype=np.int32)
         if len(d.shape) == 1:
             return d
         return d.sum(axis=1)
@@ -828,7 +835,7 @@ def alpaca_filter(wildcards):
 
 def alpaca_query(wildcards):
     query = wildcards.query
-    return re.sub("A[0-9]", lambda m: " {} ".format(config["samples"][m.group()]), query).replace("-(", "- (").replace(")-", ") -")
+    return re.sub("[AB][0-9]", lambda m: " {} ".format(config["samples"][m.group()]), query).replace("-(", "- (").replace(")-", ") -")
 
 
 rule alpaca_call:
