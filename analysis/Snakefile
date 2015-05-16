@@ -143,11 +143,11 @@ include:
 
 
 target_fpr_vs_tpr =  expand(
-    "plots/fpr_vs_tpr/{query_fpr}.{query_tpr}.depth.{layout}.pdf",
+    "plots/fpr_vs_tpr/{query_fpr}.{query_tpr}.{layout}.pdf",
     zip,
     query_fpr=config["fpr"]["queries"],
     query_tpr=config["tpr"]["queries"],
-    layout=config["fpr"]["query_plot_layouts"]
+    layout=config["query_plot_layouts"]
 )
 
 
@@ -338,7 +338,7 @@ rule tpr_tp:
     input:
         "tpr/tp/{caller}/{query}.vcf"
     output:
-        "tpr/tp/{caller}/{query}.vcf"
+        "tpr/tp/{caller}/{query}.txt"
     run:
         extract_depth_qual(input[0], output[0], get_samples_from_query(wildcards.query, call_only=True))
 
@@ -363,8 +363,8 @@ rule tpr_covered_depths:
 
 rule fpr_vs_tpr:
     input:
-        tp=expand("tpr/tp/{caller}/{query_tpr}.vcf", caller=fpr_vs_tpr_caller),
-        fp=expand("fpr/fp/{caller}/{query_fpr}.vcf", caller=fpr_vs_tpr_caller),
+        tp=expand("tpr/tp/{caller}/{{query_tpr}}.txt", caller=fpr_vs_tpr_caller),
+        fp=expand("fpr/fp/{caller}/{{query_fpr}}.txt", caller=fpr_vs_tpr_caller),
         fn_cov="tpr/fn/covered_depths/{query_tpr}.txt",
         tn_cov="fpr/tn/covered_depths/{query_fpr}.txt"
     output:
