@@ -1,6 +1,5 @@
 # vim: set syntax=python
 
-
 import random
 import sys
 import csv
@@ -51,7 +50,9 @@ config = {
                 "ftp://platgene:G3n3s4me@ussd-ftp.illumina.com/NA12891_S1.genome.vcf.gz"
             ),
             "reads": (
-                "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/working/20120117_ceu_trio_b37_decoy/CEUTrio.HiSeq.WEx.b37_decoy.NA12891.clean.dedup.recal.20120117.bam"
+                "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/working/"
+                "20120117_ceu_trio_b37_decoy/"
+                "CEUTrio.HiSeq.WEx.b37_decoy.NA12891.clean.dedup.recal.20120117.bam"
             )
         },
         "NA12892": {  # mother
@@ -59,30 +60,28 @@ config = {
                 "ftp://platgene:G3n3s4me@ussd-ftp.illumina.com/NA12892_S1.genome.vcf.gz"
             ),
             "reads": (
-                "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/working/20120117_ceu_trio_b37_decoy/CEUTrio.HiSeq.WEx.b37_decoy.NA12892.clean.dedup.recal.20120117.bam"
+                "ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/working/"
+                "20120117_ceu_trio_b37_decoy/"
+                "CEUTrio.HiSeq.WEx.b37_decoy.NA12892.clean.dedup.recal.20120117.bam"
             )
         }
     },
-    "specificity": {
+    "fpr": {
         "queries": [
-            "A0-A1", "A0-(A1+A2)", "A0-(A1+A2+A3)", "(A0+A1)-(A2+A3)"
-        ],
-        "query_plot_layouts": [
-            "y", "l", "xy", "x"
+            "A0-A1", "A0-(A1+A2)", "(A0+A1)-A2", "(A0+A1)-(A2+A3)"
         ]
     },
-    "sensitivity": {
-        "min_depth": 5,
+    "query_plot_layouts": [
+        "y", "l", "xy", "x"
+    ],
+    "tpr": {
         "sample": "NA12878",
         "filter_sample": "NA12892",
         "queries": [
             "A0-B0", "A0-(B0+B1)", "(A0+A1)-B0", "(A0+A1)-(B0+B1)"
         ],
-        "query_plot_layouts": [
-            "y", "l", "xy", "x"
-        ],
-        "xlim": 16,
-        "exclude": ['GL000207.1', 'GL000226.1', 'GL000229.1', 'GL000231.1', 'GL000210.1', 'GL000239.1', 'GL000235.1', 'GL000201.1', 'GL000247.1', 'GL000245.1', 'GL000197.1', 'GL000203.1', 'GL000246.1', 'GL000249.1', 'GL000196.1', 'GL000248.1', 'GL000244.1', 'GL000238.1', 'GL000202.1', 'GL000234.1', 'GL000232.1', 'GL000206.1', 'GL000240.1', 'GL000236.1', 'GL000241.1', 'GL000243.1', 'GL000242.1', 'GL000230.1', 'GL000237.1', 'GL000233.1', 'GL000204.1', 'GL000198.1', 'GL000208.1', 'GL000191.1', 'GL000227.1', 'GL000228.1', 'GL000214.1', 'GL000221.1', 'GL000209.1', 'GL000218.1', 'GL000220.1', 'GL000213.1', 'GL000211.1', 'GL000199.1', 'GL000217.1', 'GL000216.1', 'GL000215.1', 'GL000205.1', 'GL000219.1', 'GL000224.1', 'GL000223.1', 'GL000195.1', 'GL000212.1', 'GL000222.1', 'GL000200.1', 'GL000193.1', 'GL000194.1', 'GL000225.1', 'GL000192.1', 'MT', 'NC_012920', 'NC_012920', 'hs37d5']
+        "exclude": [
+            'GL000207.1', 'GL000226.1', 'GL000229.1', 'GL000231.1', 'GL000210.1', 'GL000239.1', 'GL000235.1', 'GL000201.1', 'GL000247.1', 'GL000245.1', 'GL000197.1', 'GL000203.1', 'GL000246.1', 'GL000249.1', 'GL000196.1', 'GL000248.1', 'GL000244.1', 'GL000238.1', 'GL000202.1', 'GL000234.1', 'GL000232.1', 'GL000206.1', 'GL000240.1', 'GL000236.1', 'GL000241.1', 'GL000243.1', 'GL000242.1', 'GL000230.1', 'GL000237.1', 'GL000233.1', 'GL000204.1', 'GL000198.1', 'GL000208.1', 'GL000191.1', 'GL000227.1', 'GL000228.1', 'GL000214.1', 'GL000221.1', 'GL000209.1', 'GL000218.1', 'GL000220.1', 'GL000213.1', 'GL000211.1', 'GL000199.1', 'GL000217.1', 'GL000216.1', 'GL000215.1', 'GL000205.1', 'GL000219.1', 'GL000224.1', 'GL000223.1', 'GL000195.1', 'GL000212.1', 'GL000222.1', 'GL000200.1', 'GL000193.1', 'GL000194.1', 'GL000225.1', 'GL000192.1', 'MT', 'NC_012920', 'NC_012920', 'hs37d5']
     },
     "samples": {
         "A0": "NA12878.subsample-0.25-0",
@@ -90,8 +89,7 @@ config = {
         "A2": "NA12878.subsample-0.25-2",
         "A3": "NA12878.subsample-0.25-3",
         "B0": "NA12892.subsample-0.25-0",
-        "B1": "NA12892.subsample-0.25-1",
-        #"B0A0": "NA12892.subsample-0.25-0+NA12878.subsample-0.25-0__at__NA12878-NA12892__with__0.8"
+        "B1": "NA12892.subsample-0.25-1"
     },
     "max_pileup_depth": 250,
     "caller_names": {
@@ -101,7 +99,7 @@ config = {
         "samtools": "SAMtools"
     },
     "parameter_space": {
-        "min_qual": list(range(10, 80, 10)),
+        "min_qual": list(range(10, 80, 10))
     }
 }
 
@@ -144,19 +142,12 @@ include:
     "https://bitbucket.org/johanneskoester/snakemake-workflows/raw/master/bio/ngs/rules/variant_calling/bcftools.rules"
 
 
-target_specificity =  expand(
-    "plots/specificity/{query}.depth.{layout}.pdf",
+target_fpr_vs_tpr =  expand(
+    "plots/fpr_vs_tpr/{query_fpr}.{query_tpr}.depth.{layout}.pdf",
     zip,
-    query=config["specificity"]["queries"],
-    layout=config["specificity"]["query_plot_layouts"]
-)
-
-
-target_sensitivity = expand(
-    "plots/sensitivity/{query}.depth.{layout}.pdf",
-    zip,
-    query=config["sensitivity"]["queries"],
-    layout=config["sensitivity"]["query_plot_layouts"]
+    query_fpr=config["fpr"]["queries"],
+    query_tpr=config["tpr"]["queries"],
+    layout=config["fpr"]["query_plot_layouts"]
 )
 
 
@@ -165,30 +156,10 @@ target_sensitivity = expand(
 
 rule all:
     input:
-        target_specificity,
-        target_sensitivity,
+        target_fpr_vs_tpr,
         expand(
             "data/reads/{sample}.readcount.txt",
             sample="NA12878 NA12892".split()
-        )
-
-
-rule specificity:
-    input:
-        target_specificity
-
-
-rule sensitivity:
-    input:
-        target_sensitivity
-
-
-rule other_vcf:
-    input:
-        expand(
-            "{caller}/{query}.vcf",
-            caller="gatk".split(),
-            query=config["specificity"]["queries"] + config["sensitivity"]["queries"]
         )
 
 
@@ -237,15 +208,57 @@ rule plot_coverages:
         plt.savefig(output[0])
 
 
-######################################### Specificity ##########################
+############################### FPR vs TPR #####################################
+
+fpr_vs_tpr_caller = "alpaca/10 alpaca/0.05 gatk freebayes samtools".split()
+fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) GATK FreeBayes SAMtools".split()
 
 
-specificity_plot_caller = {
-    query: "alpaca/0.05 gatk freebayes samtools".split() for query in config["specificity"]["queries"]
-}
+def fpr_calls(pattern):
+    def apply(wildcards):
+        return expand(
+            pattern,
+            query=wildcards.query,
+            caller=fpr_caller[wildcards.query]
+        )
+    return apply
 
 
-rule specificity_covered_depths:
+def extract_depth_qual(calls, output, samples):
+    with open(calls) as f, open(output, "w") as out:
+        print("depth", "qual", file=out, sep="\t")
+        for record in vcf.Reader(f):
+            calls = [
+                record.genotype(config["samples"][sample])
+                for sample in samples
+            ]
+            dp = sum(
+                call.data.DP
+                for call in calls
+                if call.data.DP is not None
+            )
+            print(dp, record.QUAL, file=out, sep="\t")
+
+
+rule fpr_fp:
+    input:
+        "{caller}/{query}.vcf"
+    output:
+        "fpr/fp/{caller}/{query}.txt"
+    run:
+        extract_depth_qual(input[0], output[0], get_samples_from_query(wildcards.query, filter_only=True))
+
+
+def covered_depths(bams, output, positions=""):
+    if positions:
+        positions = "--positions " + positions
+    shell(r"echo -e 'count\tdepth' > '{output}'; "
+    "samtools mpileup {positions} {bams} | "
+    r"awk -F '\t' '{{depth=0}} {{for (i=4; i<=NF; i+=3) depth+=$i}} {{print depth}}' | "
+    r"sort -n | uniq -c | awk '{{print $1,$2}}' OFS='\t' >> '{output}'")
+
+
+rule fpr_covered_depths:
     input:
         bams=lambda wildcards: expand(
             "data/reads/{sample}.bam",
@@ -255,314 +268,133 @@ rule specificity_covered_depths:
             ]
         )
     output:
-        "specificity/covered_depths/{query}.txt"
+        "fpr/tn/covered_depths/{query}.txt"
     resources: benchmark=1
-    shell:
-        # use the same samtools params as alpaca
-        "samtools mpileup -d 250 -q 17 -Q 13 -C 50 {input.bams} | "
-        r"awk -F '\t' '{{depth=0}} {{for (i=4; i<=NF; i+=3) depth+=$i}} {{print depth}}' | "
-        r"sort -n | uniq -c | awk '{{print $1,$2}}' OFS='\t' > '{output}'"
-
-
-def specificity_calls(pattern, blacklist=[]):
-    def apply(wildcards):
-        return expand(
-            pattern,
-            query=wildcards.query,
-            caller=[
-                caller for caller in specificity_plot_caller[wildcards.query]
-                if caller not in blacklist
-            ]
-        )
-    return apply
-
-
-def get_covered_depths(f):
-    _covered_depths = np.loadtxt(f, dtype=np.int64)
-    max_covered_depth = _covered_depths[:,1].max()
-    covered_depths = np.zeros(max_covered_depth + 1, dtype=np.int64)
-    covered_depths[_covered_depths[:,1]] = _covered_depths[:,0]
-    # depths higher than 250 are capped by alpaca.
-    # however we won't plot them, so biased counts do not matter there
-    return covered_depths, max_covered_depth
-
-
-def plot_fpr(f, covered_depths, max_covered_depth, style, label=None, recordfilter=None):
-    with open(f) as f:
-        reader = vcf.Reader(f)
-        if recordfilter:
-            reader = filter(recordfilter, reader)
-        fp_depths = np.array([
-            sum(
-                (call.data.DP if call.data.DP is not None else 0)
-                for call in record.samples
-            ) for record in reader
-        ])
-
-    fp = np.bincount(fp_depths, minlength=max_covered_depth + 1)
-    tn = covered_depths - fp
-
-    cum_fp = fp[::-1].cumsum()[::-1]
-    cum_tn = tn[::-1].cumsum()[::-1]
-
-    cum_n = cum_fp + cum_tn
-    fpr = cum_fp / (cum_n)
-
-    plt.semilogy(np.arange(max_covered_depth + 1), fpr, style, label=label)
-
-
-rule plot_specificity:
-    input:
-        calls=specificity_calls("{caller}/{query}.vcf"),
-        covered="specificity/covered_depths/{query}.txt"
-    output:
-        "plots/specificity/{query}.depth.{layout,[lxy]+}.pdf"
     run:
-        covered_depths, max_covered_depth = get_covered_depths(input.covered)
-
-        styles = "- -- : -. |-".split()
-        figure(figsize=(2.8, 2.5))
-        for i, (f, caller) in enumerate(zip(
-            input.calls, specificity_plot_caller[wildcards.query]
-        )):
-            plot_fpr(
-                f, covered_depths, max_covered_depth,
-                styles[i], label=config["caller_names"][caller.split("/")[0]]
-            )
-        if "x" in wildcards.layout:
-            plt.xlabel("minimum depth")
-        if "y" in wildcards.layout:
-            plt.ylabel("FPR")
-        plt.xlim((1,60))
-        plt.ylim((1e-8, 1e-2))
-        if "l" in wildcards.layout:
-            plt.legend(loc="upper right", handlelength=2.5)
-        savefig(output[0], bbox_inches="tight")
+        covered_depths(input.bams, output[0])
 
 
-rule plot_specificity_parameter_space:
+def rate(positive, negative_depths, label, min_depth=10):
+    positive = positive[positive["depth"] >= min_depth]
+    negative_depths = negative_depths[negative_depths["depth"] >= min_depth]
+
+    positive_cum = np.bincount(np.rint(positive["qual"]))[::-1].cumsum()[::-1]
+    negative_total = negative_depths["count"].sum()
+    negative_cum = negative_total - positive_cum
+
+    total_cum = positive_cum + negative_cum
+    rate_cum = positive_cum / total_cum
+
+    return pd.DataFrame({"qual": np.arange(len(rate_cum)), label: rate_cum})
+
+
+def fpr(fp, covered_depths, min_depth=10):
+    return rate(fp, covered_depths, "fpr", min_depth=min_depth)
+
+
+def tpr(tp, covered_depths, min_depth=10):
+    return rate(tp, covered_depths, "tpr", min_depth=min_depth)
+
+
+rule tpr_gold_variants:
     input:
-        calls="alpaca/10/A0-A1.vcf",
-        fdrcalls="alpaca/0.05/A0-A1.vcf",
-        covered="specificity/covered_depths/A0-A1.txt"
-    output:
-        "plots/specificity/parameter_space.pdf"
-    run:
-        figure(figsize=(2.8, 2.5))
-        covered_depths, max_covered_depth = get_covered_depths(input.covered)
-        for min_qual in config["parameter_space"]["min_qual"]:
-            plot_fpr(
-                input.calls, covered_depths, max_covered_depth, ":",
-                recordfilter=lambda record: record.QUAL >= min_qual
-            )
-        plot_fpr(
-            input.fdrcalls, covered_depths, max_covered_depth, "-"
-        )
-        plt.xlabel("minimum depth")
-        plt.ylabel("FPR")
-        plt.xlim((1,60))
-        #plt.ylim((1e-6, 1e-2))
-        savefig(output[0], bbox_inches="tight")
-
-
-##################################### Sensitivity ##############################
-
-
-sensitivity_plot_caller = {
-    query: "alpaca/0.05 gatk freebayes samtools".split() for query in config["sensitivity"]["queries"]
-}
-
-
-rule sensitivity_gold_variants:
-    input:
-        vcf=expand("data/gold_variants/{sample}.vcf", sample=config["sensitivity"]["sample"]),
+        vcf=expand("data/gold_variants/{sample}.vcf", sample=config["tpr"]["sample"]),
         gtf="ref.genes.gtf"
     output:
-        "sensitivity/gold_variants.vcf"
+        "tpr/gold_variants.vcf"
     params:
-        exclude=" --not-chr ".join(config["sensitivity"]["exclude"])
+        exclude=" --not-chr ".join(config["tpr"]["exclude"])
     resources: benchmark=1
     shell:
         "bedtools intersect -header -u -a {input.vcf} -b {input.gtf} | "
-        "vcftools --vcf - --stdout --remove-indels --not-chr {params.exclude} "
+        "vcftools --vcf - --stdout --not-chr {params.exclude} "
         "--recode > {output}"
 
 
-rule sensitivity_exclusive_gold_variants:
+rule tpr_exclusive_gold_variants:
     input:
-        filter_vcf=expand("data/gold_variants/{sample}.fixed.vcf", sample=config["sensitivity"]["filter_sample"]),
-        vcf="sensitivity/gold_variants.vcf"
+        filter_vcf=expand("data/gold_variants/{sample}.fixed.vcf", sample=config["tpr"]["filter_sample"]),
+        vcf="tpr/gold_variants.vcf"
     output:
-        "sensitivity/exclusive_gold_variants.vcf"
+        "tpr/exclusive_gold_variants.vcf"
     resources: benchmark=1
     shell:
         "grep '#' {input.vcf} > {output} && "
         "bedtools subtract -A -a {input.vcf} -b {input.filter_vcf} >> {output}"
 
 
-rule sensitivity_true_positives:
+rule tpr_tp_calls:
     input:
-        calls="{caller}/{query}.vcf",
-        gold="sensitivity/exclusive_gold_variants.vcf"
+        vcf="{caller}/{query}.vcf",
+        gold="tpr/exclusive_gold_variants.vcf"
     output:
-        "sensitivity/tp/{caller}/{query,[^\.]+}.vcf"
+        "tpr/tp/{caller}/{query}.vcf"
     resources: benchmark=1
     shell:
-        'bedtools intersect -header -u -f 1 -a "{input.calls}" -b {input.gold} > "{output}"'
+        "bedtools intersect -header -A -a '{input.vcf}' -b {input.gold} > '{output}'"
 
 
-rule sensitivity_false_negatives:
+rule tpr_tp:
     input:
-        calls="{caller}/{query}.vcf",
-        gold="sensitivity/exclusive_gold_variants.vcf"
+        "tpr/tp/{caller}/{query}.vcf"
     output:
-        "sensitivity/fn/{caller}/{query,[^\.]+}.vcf"
-    resources: benchmark=1
-    shell:
-        'grep "#" {input.gold} > "{output}" && '
-        'bedtools subtract -a {input.gold} -b "{input.calls}" >> "{output}"'
+        "tpr/tp/{caller}/{query}.vcf"
+    run:
+        extract_depth_qual(input[0], output[0], get_samples_from_query(wildcards.query, call_only=True))
 
 
-rule sensitivity_allele_depth:
+
+rule tpr_covered_depths:
     input:
-        vcf="sensitivity/{status}/{caller}/{query}.vcf",
-        bam=lambda wildcards: expand(
+        bams=lambda wildcards: expand(
             "data/reads/{sample}.bam",
-            sample=config["samples"][wildcards.sample]
-        )
-    output:
-        "sensitivity/{status}/{caller}/{query}.{sample}.allele_depth.csv"
-    resources: benchmark=1
-    run:
-        import pysam
-        bam = pysam.Samfile(str(input.bam), "rb")
-        with open(input.vcf) as f, open(output[0], "w") as out:
-            reader = vcf.Reader(f)
-            for record in reader:
-                try:
-                    n = next(bam.pileup(record.CHROM, record.POS - 1, record.POS, truncate=True)).n
-                except StopIteration:
-                    n = 0
-                print(n, file=out)
-    #shell:
-    #    "samtools mpileup -q 1 --positions '{input.vcf}' {input.bam} | cut -f4 > '{output}'"
-
-
-def sensitivity_expand_called_samples(pattern):
-    def apply(wildcards):
-        samples = get_samples_from_query(wildcards.query, call_only=True)
-        return expand(
-            pattern,
-            query=wildcards.query,
-            status=wildcards.status,
-            caller=wildcards.caller,
-            sample=samples
-        )
-    return apply
-
-
-rule sensitivity_depth:
-    input:
-        sensitivity_expand_called_samples(
-            "sensitivity/{status}/{caller}/{query}.{sample}.allele_depth.csv"
-        )
-    output:
-        "sensitivity/{status}/{caller}/{query}.depth.csv"
-    params:
-        input=sensitivity_expand_called_samples("'sensitivity/{status}/{caller}/{query}.{sample}.allele_depth.csv'")
-    resources: benchmark=1
-    shell:
-        # paste into one file
-        "paste {params.input} > '{output}'"
-
-
-def plot_sensitivity(tp_file, fn_file, style, label=None):
-    def sum_depths(f):
-        d = np.loadtxt(f, dtype=np.int32)
-        if len(d.shape) == 1:
-            return d
-        return d.sum(axis=1)
-
-    tp_depths = sum_depths(tp_file)
-    fn_depths = sum_depths(fn_file)
-    max_depth = max(np.max(fn_depths), np.max(tp_depths))
-
-    fn = np.bincount(fn_depths, minlength=max_depth + 1)
-    tp = np.bincount(tp_depths, minlength=max_depth + 1)
-
-    cum_fn = fn[::-1].cumsum()[::-1]
-    cum_tp = tp[::-1].cumsum()[::-1]
-
-    cum_p = cum_tp + cum_fn
-    sensitivity = cum_tp / cum_p
-
-    plt.plot(np.arange(max_depth + 1), sensitivity, style, label=label)
-
-
-rule plot_sensitivity:
-    input:
-        fn=lambda wildcards: expand(
-            "sensitivity/fn/{caller}/{query}.depth.csv",
-            caller=sensitivity_plot_caller[wildcards.query],
-            query=wildcards.query
+            sample=[
+                config["samples"][sample]
+                for sample in get_samples_from_query(wildcards.query, call_only=True)
+            ]
         ),
-        tp=lambda wildcards: expand(
-            "sensitivity/tp/{caller}/{query}.depth.csv",
-            caller=sensitivity_plot_caller[wildcards.query],
-            query=wildcards.query
-        )
+        gold="tpr/exclusive_gold_variants.vcf"
     output:
-        "plots/sensitivity/{query}.depth.{layout,[lxy]+}.pdf"
+        "tpr/fn/covered_depths/{query}.txt"
+    resources: benchmark=1
     run:
+        covered_depths(input.bams, output[0], positions=input.gold)
+
+
+rule fpr_vs_tpr:
+    input:
+        tp=expand("tpr/tp/{caller}/{query_tpr}.vcf", caller=fpr_vs_tpr_caller),
+        fp=expand("fpr/fp/{caller}/{query_fpr}.vcf", caller=fpr_vs_tpr_caller),
+        fn_cov="tpr/fn/covered_depths/{query_tpr}.txt",
+        tn_cov="fpr/tn/covered_depths/{query_fpr}.txt"
+    output:
+        "plots/fpr_vs_tpr/{query_fpr}.{query_tpr}.{layout,[lxy]+}.pdf"
+    run:
+        tn_cov = pd.read_table(input.tn_cov)
+        fn_cov = pd.read_table(input.fn_cov)
+
         figure(figsize=(2.8, 2.5))
-        styles = "- -- : -. |-".split()
-        
-        for i, (caller, tp, fn) in enumerate(zip(
-            sensitivity_plot_caller[wildcards.query], input.tp, input.fn
-        )):
-            plot_sensitivity(
-                tp, fn, styles[i], label=config["caller_names"][caller.split("/")[0]]
-            )
+        styles = "- -b -- : -.".split()
+        for tp, fp, style, label in zip(input.tp, input.fp, styles, fpr_vs_tpr_labels):
+            tp = pd.read_table(tp)
+            fp = pd.read_table(fp)
+            d = pd.merge(fpr(fp, tn_cov), tpr(tp, fn_cov))
+
+            plt.plot(d["fpr"], d["tpr"], style, label=label)
+
         if "x" in wildcards.layout:
-            plt.xlabel("minimum depth")
+            plt.xlabel("FPR")
         if "y" in wildcards.layout:
             plt.ylabel("TPR")
         plt.ylim((0, 1))
-        plt.xlim((0, config["sensitivity"]["xlim"]))
+        plt.xlim((0, 1))
         if "l" in wildcards.layout:
-            plt.legend(loc="lower right", handlelength=2.5)
+            plt.legend(loc="lower left", handlelength=2.5)
         savefig(output[0], bbox_inches="tight")
-
-
-rule plot_sensitivity_parameter_space:
-    input:
-        fn=lambda wildcards: expand(
-            "sensitivity/fn/alpaca/{min_qual}/A0.depth.csv",
-            min_qual=config["parameter_space"]["min_qual"]
-        ),
-        tp=lambda wildcards: expand(
-            "sensitivity/tp/alpaca/{min_qual}/A0.depth.csv",
-            min_qual=config["parameter_space"]["min_qual"]
-        ),
-        fdr_fn="sensitivity/fn/alpaca/0.05/A0.depth.csv",
-        fdr_tp="sensitivity/tp/alpaca/0.05/A0.depth.csv"
-    output:
-        "plots/sensitivity/parameter_space.pdf"
-    run:
-        figure(figsize=(2.8, 2.5))
-        for min_qual, tp, fn in zip(config["parameter_space"]["min_qual"], input.tp, input.fn):
-            plot_sensitivity(tp, fn, ":")
-        plot_sensitivity(input.fdr_tp, input.fdr_fn, "-")
-        plt.xlabel("minimum depth")
-        plt.ylabel("TPR")
-        plt.ylim((0,1))
-        plt.xlim((0, config["sensitivity"]["xlim"]))
-        savefig(output[0], bbox_inches="tight")
-
 
 ############################### run time performance ###########################
 
-performance_queries = config["specificity"]["queries"] + config["sensitivity"]["queries"]
+performance_queries = config["fpr"]["queries"] + config["tpr"]["queries"]
 performance_sample_names = sorted(config["samples"])
 performance_samples = [config["samples"][name] for name in performance_sample_names]
 performance_callers = "alpaca gatk freebayes samtools".split()
@@ -855,7 +687,7 @@ rule alpaca_call:
         "alpaca call --threads {threads} "
         "'{params.query}' {params.filter} < {input} | bcftools view - > '{output}' 2> '{log}'"
 
-        
+
 ##################################### GATK #####################################
 
 
@@ -1046,49 +878,6 @@ rule set_read_group:
         "RGID={params.rgsm} RGLB={params.rgsm} RGPU={params.rgsm} "
         "VALIDATION_STRINGENCY=SILENT "
         "RGPL=illumina RGSM={params.rgsm} &> {log}"
-
-
-rule spike_sample:
-    input:
-        base="data/reads/{base}.bam",
-        spike="data/reads/{spike}.bam",
-        variants="data/gold_variants/{variants}.vcf"
-    output:
-        "data/reads/{base}+{spike}__at__{variants}__with__{p}.bam",
-        "data/reads/{base}+{spike}__at__{variants}__with__{p}.valid.vcf"
-    resources: benchmark=1
-    run:
-        p = float(wildcards.p)
-        min_depth = config["sensitivity"]["min_depth"]
-        with pysam.Samfile(input.base, "rb") as base, pysam.Samfile(input.spike, "rb") as spike, open(input.variants) as variants, open(output.vcf, "w") as out_variants:
-            with pysam.Samfile(output.bam, "wb", template=base) as out_reads:
-                variants = vcf_reader(variants)
-                out_variants = vcf_writer(out_variants, variants)
-
-                for record in variants:
-                    # fetch reads at this locus
-                    base_reads = list(base.fetch(record.CHROM, record.POS))
-                    spike_reads = list(spike.fetch(record.CHROM, record.POS))
-
-                    if len(base_reads) < min_depth:
-                        print("skipping locus due to low base sample coverage", file=sys.stderr)
-                        continue
-
-                    # select the reads to spike in from binomial distribution
-                    k = np.random.binomial(len(base_reads), p)
-                    if len(spike_reads) < k:
-                        print("skipping locus due to low spike sample coverage", file=sys.stderr)
-                        continue
-
-                    # sample the reads according to k
-                    base_keep = random.sample(base_reads, len(base_reads) - k)
-                    spike_keep = random.sample(spike_reads, k)
-                    mixed = base_reads[base_keep] + spike_reads[spike_keep]
-
-                    # write reads and variants
-                    for read in mixed:
-                        out_reads.write(read)
-                    out_variants.write(record)
 
 
 rule subtract_variants:
