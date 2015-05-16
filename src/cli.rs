@@ -245,7 +245,8 @@ pub fn call(
         outbcf.translate(&mut site.record);
         outbcf.subset(&mut site.record);
 
-        site.update_record(prob);
+        site.set_qual(prob);
+        site.calc_genotype();
 
         // TODO trim alleles causes a segfault
         //site.record.trim_alleles().ok().expect("Error trimming alleles.");

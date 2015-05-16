@@ -33,11 +33,13 @@ impl Site {
         }).collect())
     }
 
-    /// Update the record with calling information, this has to happen after translate and subset.
-    pub fn update_record(&mut self, prob: LogProb) {
+    pub fn set_qual(&mut self, prob: LogProb) {
         let qual = prob * utils::LOG_TO_PHRED_FACTOR;
         self.record.set_qual(qual as f32);
+    }
 
+    /// Update the record with calling information, this has to happen after translate and subset.
+    pub fn calc_genotype(&mut self) {
         let likelihoods = self.genotype_likelihoods()
             .ok()
             .expect("Bug: Error reading genotype likelihoods, they should have been read before.");
@@ -76,7 +78,7 @@ impl GenotypeLikelihoods {
             // in case of no coverage, all log-likelihoods are 0
             _ if self.unknown => vec![0.0],
             // if ref is unknown, we always assume a log-likelihood of 0
-            0 => vec![ self.likelihoods[0].expect("Bug: reference likelihood can only be unknown if all likelihoods are unknown.") ],  
+            0 => vec![ self.likelihoods[0].expect("Bug: reference likelihood can only be unknown if all likelihoods are unknown.") ],
             // in the other cases, filter out unknown genotypes.
             1 => (1..self.allele_count).filter_map(|k| self.likelihoods[idx(0, k)]).collect(),
             2 => (1..self.allele_count).cartesian_product(1..self.allele_count)

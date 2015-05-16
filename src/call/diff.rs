@@ -60,7 +60,7 @@ mod tests {
                 [0.0,0.0,0.0,27,0.0,222].iter().map(|p| p * utils::PHRED_TO_LOG_FACTOR).collect(),
                 3,
             ),
-        ];            
+        ];
 
         caller.call(
     }
