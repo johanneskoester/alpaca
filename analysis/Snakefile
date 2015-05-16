@@ -787,7 +787,7 @@ rule freebayes:
     resources: benchmark=100
     shell:
         "freebayes-parallel <(fasta_generate_regions.py {input.fai} 1000000) "
-        "{threads} -f {input.ref} --no-indels --no-mnps --no-complex "
+        "{threads} -f {input.ref} --no-mnps --no-complex "
         "{input.bams} > '{output}' 2> '{log}'"
 
 
@@ -834,7 +834,7 @@ rule samtools:
     resources: benchmark=100
     shell:
         "cut -f1 {input.fai} | parallel -j {threads} "
-        "'samtools mpileup -t DP --skip-indels -gu -C50 -f {input.ref} "
+        "'samtools mpileup -t DP -gu -C50 -f {input.ref} "
         "-r {{}} {input.bams} | "
         "bcftools call -m -v - > \"{output}.{{}}.bcf\"'; "
         "cut -f1 {input.fai} | "
