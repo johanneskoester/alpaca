@@ -11,7 +11,13 @@ pub struct Diff {
 
 impl Diff {
     fn diff(p1: LogProb, p2: LogProb) -> LogProb {
-        ( -( (-p1.exp()).ln_1p() + p2 ).exp() ).ln_1p()
+        if p2 == 0.0 {
+            // increase numerical stability by avoiding unnecessary computation
+            p1
+        }
+        else {
+            ( -( (-p1.exp()).ln_1p() + p2 ).exp() ).ln_1p()
+        }
     }
 }
 
