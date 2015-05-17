@@ -7,6 +7,7 @@ import time
 import json
 import math
 
+import pandas as pd
 import numpy as np
 import pysam
 import vcf
@@ -274,11 +275,12 @@ rule fpr_covered_depths:
         covered_depths(input.bams, output[0])
 
 
-def rate(positive, negative_depths, label, min_depth=10):
+def rate(positive, negative_depths, label, min_depth=0):
     positive = positive[positive["depth"] >= min_depth]
+    #positive = positive[positive["qual"] >= 10]
     negative_depths = negative_depths[negative_depths["depth"] >= min_depth]
 
-    positive_cum = np.bincount(np.rint(positive["qual"]))[::-1].cumsum()[::-1]
+    positive_cum = np.bincount(np.asarray(np.rint(positive["qual"]), dtype=np.int64))[::-1].cumsum()[::-1]
     negative_total = negative_depths["count"].sum()
     negative_cum = negative_total - positive_cum
 
@@ -288,11 +290,11 @@ def rate(positive, negative_depths, label, min_depth=10):
     return pd.DataFrame({"qual": np.arange(len(rate_cum)), label: rate_cum})
 
 
-def fpr(fp, covered_depths, min_depth=10):
+def fpr(fp, covered_depths, min_depth=4):
     return rate(fp, covered_depths, "fpr", min_depth=min_depth)
 
 
-def tpr(tp, covered_depths, min_depth=10):
+def tpr(tp, covered_depths, min_depth=4):
     return rate(tp, covered_depths, "tpr", min_depth=min_depth)
 
 
@@ -331,7 +333,7 @@ rule tpr_tp_calls:
         "tpr/tp/{caller}/{query}.vcf"
     resources: benchmark=1
     shell:
-        "bedtools intersect -header -A -a '{input.vcf}' -b {input.gold} > '{output}'"
+        "bedtools intersect -header -a '{input.vcf}' -b {input.gold} > '{output}'"
 
 
 rule tpr_tp:
@@ -380,14 +382,14 @@ rule fpr_vs_tpr:
             fp = pd.read_table(fp)
             d = pd.merge(fpr(fp, tn_cov), tpr(tp, fn_cov))
 
-            plt.plot(d["fpr"], d["tpr"], style, label=label)
+            plt.semilogx(d["fpr"], d["tpr"], style, label=label)
 
         if "x" in wildcards.layout:
             plt.xlabel("FPR")
         if "y" in wildcards.layout:
             plt.ylabel("TPR")
-        plt.ylim((0, 1))
-        plt.xlim((0, 1))
+        #plt.ylim((0, 1))
+        #plt.xlim((0, 0.0001))
         if "l" in wildcards.layout:
             plt.legend(loc="lower left", handlelength=2.5)
         savefig(output[0], bbox_inches="tight")
