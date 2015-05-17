@@ -4,7 +4,7 @@ extern crate alpaca;
 use std::str::FromStr;
 use std::io::{stdout, stderr};
 
-use argparse::{ArgumentParser, Store, List};
+use argparse::{ArgumentParser, Store, List, StoreTrue};
 
 use alpaca::cli;
 use alpaca::utils;
@@ -97,7 +97,8 @@ fn preprocess(args: Vec<String>) {
     let mut fasta = "".to_string();
     let mut bams: Vec<String> = vec![];
     let mut threads = 1;
-    
+    let mut nobaq = false;
+
     {
         let mut ap = ArgumentParser::new();
         ap.set_description(
@@ -110,14 +111,16 @@ Example: "alpaca preprocess A.bam > A.bcf""#
 
 
         ap.refer(&mut fasta)
-          .add_argument("fasta", Store, "FASTA file with reference genome.");        
+          .add_argument("fasta", Store, "FASTA file with reference genome.");
         ap.refer(&mut bams)
           .add_argument("bam", List, "BAM files to preprocess.");
         ap.refer(&mut threads)
           .add_option(&["--threads", "-t"], Store, "Number of threads to use.");
+        ap.refer(&mut nobaq)
+          .add_option(&["--no-BAQ", "-B"], StoreTrue, "Disable BAQ (per-Base Alignment Quality adjustment)");
         parse_args_or_exit(&ap, args);
     }
-    cli::preprocess(&fasta, &bams, threads);
+    cli::preprocess(&fasta, &bams, threads, nobaq);
 }
 
 
@@ -125,7 +128,7 @@ fn merge(args: Vec<String>) {
     let mut fasta = "".to_string();
     let mut bcfs: Vec<String> = vec![];
     let mut threads = 1;
-    
+
     {
         let mut ap = ArgumentParser::new();
         ap.set_description(
@@ -137,7 +140,7 @@ Example: "alpaca merge A.bcf B.bcf C.bcf | alpaca filter > merged.bcf"#
         );
 
         ap.refer(&mut fasta)
-          .add_argument("fasta", Store, "FASTA file with reference genome.");  
+          .add_argument("fasta", Store, "FASTA file with reference genome.");
         ap.refer(&mut bcfs)
           .add_argument("bcf", List, "ALPACA-preprocessed BCF files to merge.");
         ap.refer(&mut threads)
@@ -168,7 +171,7 @@ fn call(args: Vec<String>) {
     let mut min_qual: OptionalArg<f64> = OptionalArg::None;
     let mut heterozygosity = 0.001;
     let mut threads = 1;
-    
+
     {
         let mut ap = ArgumentParser::new();
         ap.set_description(

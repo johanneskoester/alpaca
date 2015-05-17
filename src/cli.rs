@@ -30,7 +30,7 @@ fn seqs<P: AsRef<Path>>(fasta: &P) -> Vec<bio::io::fasta::Sequence> {
 }
 
 
-pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) {
+pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize, nobaq: bool) {
     let seqs = seqs(fasta);
 
     let mpileup = |tmp: &Path, region: &str| {
@@ -40,21 +40,24 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize) 
         mkfifo(fifo.as_path());
         let bcf = tmp.join("annotate").with_extension("bcf");
 
-        let mut mpileup = process::Command::new("samtools")
-            .arg("mpileup")
-            .arg("-r").arg(region)
-            .arg("-f").arg(fasta.as_ref())
-            .arg("-g").arg("-u")
-            .arg("-t").arg("DP")
-            .arg("-q").arg("1")  // minimum mapping quality
-            .arg("-C").arg("50")  // mapping quality downgrade in case of excessive mismatches
-            .arg("-o").arg(&fifo)
-            .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec())
-            .spawn().ok().expect("Failed to execute samtools mpileup.");
+        let mut mpileup_cmd = process::Command::new("samtools");
+        mpileup_cmd.arg("mpileup")
+            .arg("--region").arg(region)
+            .arg("--fasta-ref").arg(fasta.as_ref())
+            .arg("--BCF").arg("--uncompressed")
+            .arg("--output-tags").arg("DP")
+            .arg("--min-MQ").arg("1")  // minimum mapping quality
+            .arg("--adjust-MQ").arg("50")  // mapping quality downgrade in case of excessive mismatches
+            .arg("--output").arg(&fifo)
+            .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec());
+        if nobaq {
+            mpileup_cmd.arg("--no-baq");
+        }
+        let mut mpileup = mpileup_cmd.spawn().ok().expect("Failed to execute samtools mpileup.");
         let mut ann = process::Command::new("bcftools")
             .arg("annotate")
-            .arg("-O").arg("b")
-            .arg("-o").arg(&bcf)
+            .arg("--output-type").arg("b")
+            .arg("--output").arg(&bcf)
             .arg("--remove").arg("INFO/INDEL,INFO/IDV,INFO/IMF,INFO/I16,INFO/QS,INFO/DP")
             .arg(&fifo)
             .spawn().ok().expect("Failed to execute bcftools annotate.");
