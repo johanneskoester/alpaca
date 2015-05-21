@@ -211,7 +211,7 @@ rule plot_coverages:
 
 ############################### FPR vs TPR #####################################
 
-fpr_vs_tpr_caller = "alpaca/10 alpaca/0.05 gatk freebayes samtools".split()
+fpr_vs_tpr_caller = "alpaca/1 alpaca/0.05 gatk freebayes samtools".split()
 fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) GATK FreeBayes SAMtools".split()
 
 
@@ -275,7 +275,7 @@ rule fpr_covered_depths:
         covered_depths(input.bams, output[0])
 
 
-def rate(positive, negative_depths, label, min_depth=0):
+def rate(positive, negative_depths, label, min_depth=4):
     positive = positive[positive["depth"] >= min_depth]
     #positive = positive[positive["qual"] >= 10]
     negative_depths = negative_depths[negative_depths["depth"] >= min_depth]
@@ -290,11 +290,11 @@ def rate(positive, negative_depths, label, min_depth=0):
     return pd.DataFrame({"qual": np.arange(len(rate_cum)), label: rate_cum})
 
 
-def fpr(fp, covered_depths, min_depth=4):
+def fpr(fp, covered_depths, min_depth=6):
     return rate(fp, covered_depths, "fpr", min_depth=min_depth)
 
 
-def tpr(tp, covered_depths, min_depth=4):
+def tpr(tp, covered_depths, min_depth=6):
     return rate(tp, covered_depths, "tpr", min_depth=min_depth)
 
 
@@ -606,7 +606,7 @@ rule alpaca_preprocess:
     benchmark:
         "benchmarks/alpaca/{sample}.preprocess.json"
     shell:
-        "alpaca preprocess --threads {threads} "
+        "alpaca preprocess --no-BAQ --threads {threads} "
         "{input.ref} {input.bam} > {output} 2> {log}"
 
 
@@ -730,6 +730,7 @@ rule gatk_genotyping:
     resources: benchmark=100
     shell:
         "gatk -T GenotypeGVCFs {params.gvcfs} -nt {threads} -R {input.ref} "
+        "-stand_call_conf 10 -stand_emit_conf 10 "
         "-o '{output}' &> '{log}'"
 
 
@@ -836,7 +837,7 @@ rule samtools:
     resources: benchmark=100
     shell:
         "cut -f1 {input.fai} | parallel -j {threads} "
-        "'samtools mpileup -t DP -gu -C50 -f {input.ref} "
+        "'samtools mpileup -t DP -gu -B -C50 -Q0 -q1 -f {input.ref} "
         "-r {{}} {input.bams} | "
         "bcftools call -m -v - > \"{output}.{{}}.bcf\"'; "
         "cut -f1 {input.fai} | "
