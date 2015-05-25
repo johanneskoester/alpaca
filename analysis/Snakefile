@@ -143,13 +143,13 @@ include:
     "https://bitbucket.org/johanneskoester/snakemake-workflows/raw/master/bio/ngs/rules/variant_calling/bcftools.rules"
 
 
-target_fpr_vs_tpr =  expand(
-    "plots/fpr_vs_tpr/{query_fpr}.{query_tpr}.{layout}.pdf",
+target_fpr_vs_tpr =  expand(expand(
+    "plots/fpr_vs_tpr/{{depth}}/{query_fpr}.{query_tpr}.{layout}.pdf",
     zip,
     query_fpr=config["fpr"]["queries"],
     query_tpr=config["tpr"]["queries"],
     layout=config["query_plot_layouts"]
-)
+), depth=[4, 20])
 
 
 ########################### Target rules #######################################
@@ -250,13 +250,12 @@ rule fpr_fp:
         extract_depth_qual(input[0], output[0], get_samples_from_query(wildcards.query, filter_only=True))
 
 
-def covered_depths(bams, output, positions=""):
+def pileup_depths(bams, output, positions=""):
     if positions:
         positions = "--positions " + positions
-    shell(r"echo -e 'count\tdepth' > '{output}'; "
-    "samtools mpileup {positions} {bams} | "
-    r"awk -F '\t' '{{depth=0}} {{for (i=4; i<=NF; i+=3) depth+=$i}} {{print depth}}' | "
-    r"sort -n | uniq -c | awk '{{print $1,$2}}' OFS='\t' >> '{output}'")
+    shell(r"echo depth > '{output}'; "
+    "samtools mpileup -q0 -Q0 {positions} {bams} | "
+    r"awk -F '\t' '{{depth=0}} {{for (i=4; i<=NF; i+=3) depth+=$i}} {{print depth}}' >> '{output}'")
 
 
 rule fpr_covered_depths:
@@ -272,29 +271,29 @@ rule fpr_covered_depths:
         "fpr/tn/covered_depths/{query}.txt"
     resources: benchmark=1
     run:
-        covered_depths(input.bams, output[0])
+        pileup_depths(input.bams, output[0])
 
 
-def rate(positive, negative_depths, label, min_depth=4):
+def rate(positive, negative_depths, label, min_depth=1):
     positive = positive[positive["depth"] >= min_depth]
     #positive = positive[positive["qual"] >= 10]
-    negative_depths = negative_depths[negative_depths["depth"] >= min_depth]
+    negative_total = (negative_depths["depth"] >= min_depth).sum()
 
     positive_cum = np.bincount(np.asarray(np.rint(positive["qual"]), dtype=np.int64))[::-1].cumsum()[::-1]
-    negative_total = negative_depths["count"].sum()
     negative_cum = negative_total - positive_cum
 
     total_cum = positive_cum + negative_cum
     rate_cum = positive_cum / total_cum
 
-    return pd.DataFrame({"qual": np.arange(len(rate_cum)), label: rate_cum})
+    first_small = np.argmax(positive_cum < 20)
+    return pd.DataFrame({"qual": np.arange(len(rate_cum)), label: rate_cum}), first_small
 
 
-def fpr(fp, covered_depths, min_depth=6):
+def fpr(fp, covered_depths, min_depth=4):
     return rate(fp, covered_depths, "fpr", min_depth=min_depth)
 
 
-def tpr(tp, covered_depths, min_depth=6):
+def tpr(tp, covered_depths, min_depth=4):
     return rate(tp, covered_depths, "tpr", min_depth=min_depth)
 
 
@@ -360,7 +359,7 @@ rule tpr_covered_depths:
         "tpr/fn/covered_depths/{query}.txt"
     resources: benchmark=1
     run:
-        covered_depths(input.bams, output[0], positions=input.gold)
+        pileup_depths(input.bams, output[0], positions=input.gold)
 
 
 rule fpr_vs_tpr:
@@ -370,19 +369,24 @@ rule fpr_vs_tpr:
         fn_cov="tpr/fn/covered_depths/{query_tpr}.txt",
         tn_cov="fpr/tn/covered_depths/{query_fpr}.txt"
     output:
-        "plots/fpr_vs_tpr/{query_fpr}.{query_tpr}.{layout,[lxy]+}.pdf"
+        "plots/fpr_vs_tpr/{depth,[0-9]+}/{query_fpr}.{query_tpr}.{layout,[lxy]+}.pdf"
     run:
         tn_cov = pd.read_table(input.tn_cov)
         fn_cov = pd.read_table(input.fn_cov)
+        depth = int(wildcards.depth)
 
         figure(figsize=(2.8, 2.5))
-        styles = "- -b -- : -.".split()
+        styles = "- x -- : -.".split()
         for tp, fp, style, label in zip(input.tp, input.fp, styles, fpr_vs_tpr_labels):
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
-            d = pd.merge(fpr(fp, tn_cov), tpr(tp, fn_cov))
-
-            plt.semilogx(d["fpr"], d["tpr"], style, label=label)
+            _fpr, fpr_small = fpr(fp, tn_cov, depth)
+            _tpr, tpr_small = tpr(tp, fn_cov, depth)
+            d = pd.merge(_fpr, _tpr)
+            if label == "ALPACA(FDR)":
+                plt.semilogx(d["fpr"][0], d["tpr"][0], style, mew=1)
+            else:
+                plt.semilogx(d["fpr"], d["tpr"], style, label=label)
 
         if "x" in wildcards.layout:
             plt.xlabel("FPR")
@@ -391,7 +395,7 @@ rule fpr_vs_tpr:
         #plt.ylim((0, 1))
         #plt.xlim((0, 0.0001))
         if "l" in wildcards.layout:
-            plt.legend(loc="lower left", handlelength=2.5)
+            plt.legend(loc="lower right", handlelength=2.5)
         savefig(output[0], bbox_inches="tight")
 
 ############################### run time performance ###########################
@@ -730,7 +734,7 @@ rule gatk_genotyping:
     resources: benchmark=100
     shell:
         "gatk -T GenotypeGVCFs {params.gvcfs} -nt {threads} -R {input.ref} "
-        "-stand_call_conf 10 -stand_emit_conf 10 "
+        "-stand_call_conf 1 -stand_emit_conf 1 "
         "-o '{output}' &> '{log}'"
 
 
