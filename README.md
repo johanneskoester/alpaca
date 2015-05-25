@@ -1,5 +1,5 @@
 # ALPACA - the ALgebraic PArallel variant CAller
-ALPACA is a caller for genetic variants from next-generation sequencing data.
+ALPACA is a caller for genomic variants (single nucleotide and small indels) from next-generation sequencing data.
 It has two major distinguishing features compared to other variant callers:
 
 * ALPACA incorporates arbitrary filtering of samples against each other into the calling. This is done via an expressive, algebraic query language. It calculates the posterior probability for each locus to not behave like described in the filter query. If that probability is small enough, the locus is called.
@@ -23,7 +23,7 @@ A complete description of algebraic variant calling can be found in my thesis
 
 If you use ALPACA, please cite the thesis for now.
 
-## Example usage:
+## Example usage
 
 All in one command:
 

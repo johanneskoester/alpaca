@@ -2,7 +2,6 @@
 #![feature(plugin)]
 #![plugin(peg_syntax_ext)]
 #![feature(collections)]
-#![feature(str_char)]
 #![feature(collections_drain)]
 #![feature(step_by)]
 

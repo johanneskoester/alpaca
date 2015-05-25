@@ -116,7 +116,7 @@ where F: Fn(&Path, &str) -> KernelResult {
             }
         }
 
-        let mut results = pool.map(regions.iter(), &apply);
+        let mut results = unsafe { pool.map(regions.iter(), &apply) };
 
         let mut result = results.next().unwrap();
         let mut writer = {

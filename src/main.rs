@@ -48,6 +48,13 @@ impl<T> OptionalArg<T> {
             OptionalArg::None    => None
         }
     }
+
+    fn is_none(&self) -> bool {
+        match self {
+            &OptionalArg::Some(_) => false,
+            &OptionalArg::None    => true
+        }
+    }
 }
 
 
@@ -192,6 +199,12 @@ Example: "alpaca call --fdr 0.05 'A - (B + C)' < filtered.bcf > calls.bcf""#
           .add_option(&["--threads", "-t"], Store, "Number of threads to use (default 1).");
         parse_args_or_exit(&ap, args);
     }
+
+    if min_qual.is_none() && fdr.is_none() {
+        fdr = OptionalArg::Some(0.05);
+    }
+
+
     let max_prob = min_qual.into_option().map(|q| q * utils::PHRED_TO_LOG_FACTOR);
 
     cli::call(&query, fdr.into_option().map(|fdr| fdr.ln()), max_prob, heterozygosity, threads);

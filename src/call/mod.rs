@@ -57,7 +57,7 @@ pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max
             return candidates;
         }
 
-        for probs in pool.map(likelihood_buffer.chunks(1000000 / threads), &call) {
+        for probs in unsafe { pool.map(likelihood_buffer.chunks(1000000 / threads), &call) } {
             prob_buffer.extend(probs);
         }
 
