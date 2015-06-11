@@ -1,3 +1,6 @@
+[![Binstar Badge](https://binstar.org/anaconda/conda/badges/installer/conda.svg)](https://conda.binstar.org/anaconda)
+[![](http://meritbadge.herokuapp.com/bio)](https://crates.io/crates/bio)
+
 # ALPACA - the ALgebraic PArallel variant CAller
 ALPACA is a caller for genomic variants (single nucleotide and small indels) from next-generation sequencing data.
 It has two major distinguishing features compared to other variant callers:
@@ -22,6 +25,16 @@ A complete description of algebraic variant calling can be found in my thesis
 > Köster, J. Parallelization, Scalability, and Reproducibility in Next-Generation Sequencing Analysis. PhD-Thesis, TU Dortmund, Germany 2014. ISBN: 978-3737537773.
 
 If you use ALPACA, please cite the thesis for now.
+
+## Installation
+
+The easiest way to install ALPACA is to use the conda package manager (http://conda.pydata.org/docs/install/quick.html). With conda installed, you can issue
+
+    $ conda install -c johanneskoester alpaca
+
+to install ALPACA. It can be updated via
+
+    $ conda update -c johanneskoester alpaca
 
 ## Example usage
 
