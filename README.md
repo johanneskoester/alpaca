@@ -1,5 +1,5 @@
-[![Binstar Badge](https://binstar.org/anaconda/conda/badges/installer/conda.svg)](https://conda.binstar.org/anaconda)
-[![](http://meritbadge.herokuapp.com/bio)](https://crates.io/crates/bio)
+[![Binstar Badge](https://binstar.org/anaconda/conda/badges/installer/conda.svg)](https://anaconda.org/johanneskoester/alpaca)
+[![](http://meritbadge.herokuapp.com/alpaca)](https://crates.io/crates/alpaca)
 
 # ALPACA - the ALgebraic PArallel variant CAller
 ALPACA is a caller for genomic variants (single nucleotide and small indels) from next-generation sequencing data.
