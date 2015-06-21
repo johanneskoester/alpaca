@@ -211,8 +211,8 @@ rule plot_coverages:
 
 ############################### FPR vs TPR #####################################
 
-fpr_vs_tpr_caller = "alpaca/1 alpaca/0.05 gatk freebayes samtools".split()
-fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) GATK FreeBayes SAMtools".split()
+fpr_vs_tpr_caller = "alpaca/1 alpaca/0.05 gatk freebayes samtools strelka".split()
+fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) GATK FreeBayes SAMtools Strelka".split()
 
 
 def fpr_calls(pattern):
@@ -238,7 +238,10 @@ def extract_depth_qual(calls, output, samples):
                 for call in calls
                 if call.data.DP is not None
             )
-            print(dp, record.QUAL, file=out, sep="\t")
+            qual = 0
+            if record.QUAL is not None:
+                qual = record.Qual
+            print(dp, qual, file=out, sep="\t")
 
 
 rule fpr_fp:
@@ -376,14 +379,14 @@ rule fpr_vs_tpr:
         depth = int(wildcards.depth)
 
         figure(figsize=(2.8, 2.5))
-        styles = "- x -- : -.".split()
+        styles = "- x -- : -. +".split()
         for tp, fp, style, label in zip(input.tp, input.fp, styles, fpr_vs_tpr_labels):
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
             _fpr, fpr_small = fpr(fp, tn_cov, depth)
             _tpr, tpr_small = tpr(tp, fn_cov, depth)
             d = pd.merge(_fpr, _tpr)
-            if label == "ALPACA(FDR)":
+            if label == "ALPACA(FDR)" or label == "Strelka":
                 plt.semilogx(d["fpr"][0], d["tpr"][0], style, mew=1)
             else:
                 plt.semilogx(d["fpr"], d["tpr"], style, label=label)
@@ -809,7 +812,7 @@ rule mutect:
         ref="ref.fasta",
         fai="ref.fasta.fai"
     output:
-        "mutect/{query,(A0-A1|A0-B0)}.call_stats.out"
+        "mutect/{query,(A0-A1|A0-B0)}.vcf"
     log:
         "logs/mutect/{query}.log"
     benchmark:
@@ -819,7 +822,49 @@ rule mutect:
     shell:
         "mutect -nt {threads} --analysis_type MuTect --reference_sequence {input.ref} "
         "--input_file:normal {input.bams[1]} --input_file:tumor {input.bams[0]} "
-        "--out {output} &> {log}"
+        "--vcf {output} &> {log}"
+
+
+
+################################### Strelka ####################################
+
+
+rule strelka:
+    input:
+        expand_samples_from_query("data/reads/{sample}.bam.bai", orig_name=True),
+        bams=expand_samples_from_query("data/reads/{sample}.bam", orig_name=True),
+        ref="ref.fasta",
+        fai="ref.fasta.fai",
+        config="strelka_config.ini"
+    output:
+        "strelka/{query,(A0-A1|A0-B0)}/results/all.somatic.snvs.vcf",
+        "strelka/{query,(A0-A1|A0-B0)}/results/all.somatic.indels.vcf"
+    params:
+        dir="strelka/{query,(A0-A1|A0-B0)}"
+    benchmark:
+        "benchmarks/strelka/{query}.json"
+    threads: 12
+    resources: benchmark=100
+    shell:
+        "rm -r {params.dir}; "
+        "configureStrelkaWorkflow --normal={input.bams[1]} --tumor={input.bams[0]} "
+        "--config={input.config} --ref={input.ref} --output-dir={params.dir}; "
+        "cd {params.dir}; make -j {threads}"
+
+
+rule strelka_merge:
+    input:
+        "strelka/{query,(A0-A1|A0-B0)}/results/all.somatic.snvs.vcf",
+        "strelka/{query,(A0-A1|A0-B0)}/results/all.somatic.indels.vcf"
+    output:
+        "strelka/{query,(A0-A1|A0-B0)}.vcf"
+    params:
+        normal=lambda wildcards: config["samples"]["A1" if wildcards.query == "A0-A1" else "B0"],
+        tumor=lambda wildcards: config["samples"]["A0"]
+    shell:
+        "for f in {input}; do bgzip -c $f > $f.gz; tabix -p vcf $f.gz; done; "
+        "bcftools concat -a -Ov {input[0]}.gz {input[1]}.gz | "
+        "sed 's/TUMOR/{params.tumor}/' | sed 's/NORMAL/{params.normal}/' > {output}"
 
 
 #################################### Samtools ##################################
