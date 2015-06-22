@@ -1,0 +1,9 @@
+package:
+  name: alpaca
+  version: "0.1.0"
+source:
+  path: ../../
+about:
+  home: https://github.com/johanneskoester/alpaca
+  license: MIT License
+  summary: ALPACA is a caller for genomic variants (single nucleotide and small indels) from next-generation sequencing data that uses a novel algebraic approach to incorporate sample based filtering into the calling. This allows to intuitively control the FDR for arbitrary filtering scenarios.

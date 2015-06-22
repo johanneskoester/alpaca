@@ -213,6 +213,7 @@ rule plot_coverages:
 
 fpr_vs_tpr_caller = "alpaca/1 alpaca/0.05 gatk freebayes samtools strelka".split()
 fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) GATK FreeBayes SAMtools Strelka".split()
+fpr_vs_tpr_styles = "- x -- : -. +".split()
 
 
 def fpr_calls(pattern):
@@ -379,7 +380,7 @@ rule fpr_vs_tpr:
         depth = int(wildcards.depth)
 
         figure(figsize=(2.8, 2.5))
-        styles = "- x -- : -. +".split()
+        styles = fpr_vs_tpr_styles
         for tp, fp, style, label in zip(input.tp, input.fp, styles, fpr_vs_tpr_labels):
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
@@ -395,8 +396,31 @@ rule fpr_vs_tpr:
             plt.xlabel("FPR")
         if "y" in wildcards.layout:
             plt.ylabel("TPR")
-        #plt.ylim((0, 1))
-        #plt.xlim((0, 0.0001))
+        if "l" in wildcards.layout:
+            plt.legend(loc="lower right", handlelength=2.5)
+        savefig(output[0], bbox_inches="tight")
+
+
+rule fpr_vs_qual:
+    input:
+        fp=expand("fpr/fp/{caller}/{{query_fpr}}.txt", caller=fpr_vs_tpr_caller),
+        tn_cov="fpr/tn/covered_depths/{query_fpr}.txt"
+    output:
+        "plots/fpr_vs_qual/{query_fpr}.{layout,[lxy]+}.pdf"
+    run:
+        tn_cov = pd.read_table(input.tn_cov)
+        figure(figsize=(2.8, 2.5))
+        styles = fpr_vs_tpr_styles
+        for fp, style, label in zip(input.fp, styles, fpr_vs_tpr_labels):
+            if label == "ALPACA(FDR)" or label == "Strelka":
+                continue
+            fp = pd.read_table(fp)
+            fpr, _ = fpr(fp, th_cov, 4)
+            plt.semilogy(fp["qual"], fp["fpr"], style, label=label)
+        if "x" in wildcards.layout:
+            plt.xlabel("FPR")
+        if "y" in wildcards.layout:
+            plt.ylabel("TPR")
         if "l" in wildcards.layout:
             plt.legend(loc="lower right", handlelength=2.5)
         savefig(output[0], bbox_inches="tight")
