@@ -469,17 +469,18 @@ rule plot_fdr_correlation:
         fp["fp"] = True
 
         figure(figsize=(2.8, 2.5))
-        for fdr in np.arange(0.01, 0.26, 0.01):
-            tp_n = fp.shape[0] * (1 - fdr) / fdr
-            sample = random.sample(tp.index, tp_n)
-            tp_ = tp.ix[sample]
-            p = pd.concat(tp_, fp).sort("prob")
-            exp_fdr = p["qual"].cumsum()
-            idx = np.searchsorted(exp_fdr, fdr, side="right")
-            true_fdr = p[:idx]["fp"].sum() / idx
-            plt.plot(true_fdr, fdr, ".", mew=2)
-        plt.xlabel("true FDR")
-        plt.ylabel("controlled FDR")
+        for tpcount in range(fp.shape[0] * 3, tp.shape[0]):
+            max_fdr = fp.shape[0] / (tpcount + fp.shape[0])
+            for _ in range(5):
+                sample = random.sample(tp.index, tpcount)
+                p = pd.concat([tp.ix[sample], fp]).sort("prob")
+                exp_fdr = p["qual"].cumsum()
+                for fdr in np.arange(0.01, max_fdr, 0.01):
+                    idx = np.searchsorted(exp_fdr, fdr, side="right")
+                    true_fdr = p[:idx]["fp"].sum() / idx
+                    plt.plot(fdr, true_fdr, ".", mew=2)
+        plt.ylabel("true FDR")
+        plt.xlabel("controlled FDR")
         savefig(output[0], bbox_inches="tight")
 
 ############################### run time performance ###########################
