@@ -32,9 +32,8 @@ The easiest way to install ALPACA is to use the conda package manager (http://co
 
     $ conda install -c johanneskoester alpaca
 
-to install ALPACA. It can be updated via
+to install or update ALPACA.
 
-    $ conda update -c johanneskoester alpaca
 
 ## Example usage
 
