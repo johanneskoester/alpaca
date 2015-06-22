@@ -401,28 +401,85 @@ rule fpr_vs_tpr:
         savefig(output[0], bbox_inches="tight")
 
 
+def plot_rate_vs_qual(positives_files, negatives_file, out_file, rate="fpr"):
+    negatives = pd.read_table(negatives_file)
+
+    figure(figsize=(2.8, 2.5))
+    styles = fpr_vs_tpr_styles
+    for positives, style, label in zip(positives_files, styles, fpr_vs_tpr_labels):
+        if label == "ALPACA(FDR)" or label == "Strelka":
+            continue
+        if rate == "fpr":
+            fp = pd.read_table(positives)
+            d, _ = fpr(fp, tn_cov, 4)
+            y = d["fpr"]
+        else:
+            tp = pd.read_table(tp)
+            d, _ = tpr(tp, fn_cov, 4)
+            y = d["tpr"]
+        plt.semilogy(d["qual"], y, style, label=label)
+    if "x" in wildcards.layout:
+        plt.xlabel("quality")
+    if "y" in wildcards.layout:
+        plt.ylabel(rate.upper())
+    if "l" in wildcards.layout:
+        plt.legend(loc="lower right", handlelength=2.5)
+    savefig(out_file, bbox_inches="tight")
+
+
 rule fpr_vs_qual:
     input:
-        fp=expand("fpr/fp/{caller}/{{query_fpr}}.txt", caller=fpr_vs_tpr_caller),
-        tn_cov="fpr/tn/covered_depths/{query_fpr}.txt"
+        fp=expand("fpr/fp/{caller}/{{quer}}.txt", caller=fpr_vs_tpr_caller),
+        tn_cov="fpr/tn/covered_depths/{query}.txt"
     output:
-        "plots/fpr_vs_qual/{query_fpr}.{layout,[lxy]+}.pdf"
+        "plots/fpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
     run:
-        tn_cov = pd.read_table(input.tn_cov)
+        plot_rate_vs_qual(input.fp, input.tn_cov, output[0], "fpr")
+
+
+rule tpr_vs_qual:
+    input:
+        tp=expand("tpr/tp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller),
+        fn_cov="tpr/fn/covered_depths/{query}.txt"
+    output:
+        "plots/tpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
+    run:
+        plot_rate_vs_qual(input.tp, input.fn_cov, output[0], "tpr")
+
+
+############################### estimate FDR ###################################
+
+
+rule plot_fdr_correlation:
+    input:
+        tp="tpr/tp/alpaca/1/{query_tpr}.txt",
+        fp="fpr/fp/alpaca/1/{query_fpr}.txt"
+    output:
+        "plots/fdr/{query_fpr}.{query_tpr}.pdf"
+    run:
+        import random
+        qual_to_prob = lambda qual: 10 ** (-qual / 10)
+
+        tp = pd.read_table(input.tp)
+        tp["fp"] = False
+        tp["prob"] = tp["qual"].apply(qual_to_prob)
+
+        fp = pd.read_table(input.fp)
+        fp["prob"] = fp["qual"].apply(qual_to_prob)
+        fp["fp"] = True
+
         figure(figsize=(2.8, 2.5))
-        styles = fpr_vs_tpr_styles
-        for fp, style, label in zip(input.fp, styles, fpr_vs_tpr_labels):
-            if label == "ALPACA(FDR)" or label == "Strelka":
-                continue
-            fp = pd.read_table(fp)
-            fpr, _ = fpr(fp, th_cov, 4)
-            plt.semilogy(fp["qual"], fp["fpr"], style, label=label)
-        if "x" in wildcards.layout:
-            plt.xlabel("FPR")
-        if "y" in wildcards.layout:
-            plt.ylabel("TPR")
-        if "l" in wildcards.layout:
-            plt.legend(loc="lower right", handlelength=2.5)
+        for fdr in np.arange(0.01, 0.26, 0.01):
+            tp_n = fp.shape[0] * (1 - fdr) / fdr
+            sample = random.sample(tp.index, tp_n)
+            tp_ = tp.ix[sample]
+            p = pd.concat(tp_, fp).sort("prob")
+            exp_fdr = p["qual"].cumsum()
+            idx = np.searchsorted(exp_fdr, fdr, side="right")
+            true_fdr = p[:idx]["fp"].sum() / idx
+            plt.plot(true_fdr, fdr, ".", mew=2)
+        plt.xlabel("true FDR")
+        plt.ylabel("controlled FDR")
         savefig(output[0], bbox_inches="tight")
 
 ############################### run time performance ###########################
