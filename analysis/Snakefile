@@ -488,19 +488,23 @@ rule plot_fdr_correlation:
 
         plt.figure(figsize=(3.86, 2.4), dpi=90)
 
-        for fdr in [0.05, 0.10, 0.25]:
+        for total_fdr in [0.05, 0.10, 0.25]:
             d = []
             for _ in range(100):
                 sample = pd.concat([
-                    tp.ix[np.random.choice(tp.index, int(50 * (1-fdr) / fdr))],
-                    fp.ix[np.random.choice(fp.index, 50)]
+                    tp.ix[np.random.choice(tp.index, int(100 * (1-total_fdr) / total_fdr))],
+                    fp.ix[np.random.choice(fp.index, 100)]
                 ])
-                exp_fdr = sample["prob"].sum() / sample.shape[0]
-                true_fdr = sample["fp"].sum() / sample.shape[0]
-                d.append(exp_fdr)
-            sns.kdeplot(np.asarray(d), cumulative=True, label="true FDR={}".format(true_fdr))
+                sample.sort("prob", inplace=True)
+                exp_fdr = sample["prob"].cumsum()
+                i = np.searchsorted(exp_fdr, 0.05, side="right")
+                true_fdr = sample[:i]["fp"].sum() / i
+                #exp_fdr = sample["prob"].sum() / sample.shape[0]
+                #true_fdr = sample["fp"].sum() / sample.shape[0]
+                d.append(true_fdr)
+            sns.kdeplot(np.asarray(d), cumulative=True, label="total FDR={}".format(true_fdr))
         plt.xlim((0.15, 0.25))
-        plt.xlabel("expected FDR")
+        plt.xlabel("true FDR after control")
         plt.ylabel("CDF")
         sns.despine()
         savefig(output[0], bbox_inches="tight")
