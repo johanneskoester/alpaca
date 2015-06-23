@@ -213,7 +213,7 @@ rule plot_coverages:
         "plots/coverage.pdf"
     resources: benchmark=1
     run:
-        figure()
+        plt.figure(figsize=(3.86, 2.4), dpi=90)
         for f in input:
             cov = np.loadtxt(f, dtype=np.int64)[1:]
             depth, freq = cov[:,0], cov[:,1]
@@ -224,6 +224,7 @@ rule plot_coverages:
             #plt.semilogy([mean, mean], [0, 10 ** 6], "--")
         plt.xlabel("depth")
         plt.ylabel("frequency")
+        sns.despine()
         plt.savefig(output[0])
 
 
@@ -397,7 +398,7 @@ rule fpr_vs_tpr:
         fn_cov = pd.read_table(input.fn_cov)
         depth = int(wildcards.depth)
 
-        figure(figsize=(2.8, 2.5))
+        plt.figure(figsize=(2.8, 2.5), dpi=90)
         styles = fpr_vs_tpr_styles
         for tp, fp, style, label in zip(input.tp, input.fp, styles, fpr_vs_tpr_labels):
             tp = pd.read_table(tp)
@@ -416,6 +417,7 @@ rule fpr_vs_tpr:
             plt.ylabel("TPR")
         if "l" in wildcards.layout:
             plt.legend(loc="lower right", handlelength=2.5)
+        sns.despine()
         savefig(output[0], bbox_inches="tight")
 
 
@@ -428,9 +430,6 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
         positives = pd.read_table(positives)
         positives = positives[np.logical_and(positives["depth"] >= 4, positives["qual"] >= 1)]
         sns.kdeplot(positives["qual"].apply(lambda q: 10 ** (-q / 10)), cumulative=True, label=label, ls=style, legend=False)
-        #cdf = positives["qual"].apply(lambda q: 10 ** (-q / 10)).value_counts(normalize=True).sort_index().cumsum()
-        #x = cdf.index
-        #plt.plot(x, cdf, style, label=label, clip_on=False)
     plt.xlim((0,1))
     plt.ylim((0,1))
     if "x" in layout:
@@ -438,7 +437,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     if "y" in layout:
         plt.ylabel("CDF")
     if "l" in layout:
-        plt.legend(loc="lower right")
+        plt.legend(loc="lower right", handlelength=2.5)
     sns.despine()
     plt.locator_params(nbins=5)
     savefig(out_file, bbox_inches="tight")
@@ -499,17 +498,11 @@ rule plot_fdr_correlation:
                 ])
                 exp_fdr = sample["prob"].sum() / sample.shape[0]
                 true_fdr = sample["fp"].sum() / sample.shape[0]
-
-                #sample.sort("prob", inplace=True)
-                #exp_fdr = sample["prob"].cumsum()
-                #i = np.searchsorted(exp_fdr, fdr, side="right")
-                #true_fdr = sample[:i]["fp"].sum() / i
                 d.append(exp_fdr)
             sns.kdeplot(np.asarray(d), cumulative=True, label="true FDR={}".format(true_fdr), ls=ls)
         plt.xlim((0.15, 0.25))
         plt.xlabel("expected FDR")
         plt.ylabel("CDF")
-        plt.locator_params(nbins=5)
         sns.despine()
         savefig(output[0], bbox_inches="tight")
 
