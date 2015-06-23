@@ -18,7 +18,7 @@ from mpl_toolkits.axes_grid.axislines import Subplot
 from scipy.stats import kde, binned_statistic
 import seaborn as sns
 sns.set_style("ticks")
-sns.set_palette(sns.xkcd_palette(["windows blue"]))
+#sns.set_palette(sns.xkcd_palette(["windows blue"]))
 
 savefig = partial(plt.savefig, bbox_inches="tight")
 
@@ -229,8 +229,6 @@ rule plot_coverages:
 
 fpr_vs_tpr_caller = "alpaca/1 alpaca/0.05 gatk freebayes samtools strelka".split()
 fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) GATK FreeBayes SAMtools Strelka".split()
-fpr_vs_tpr_styles = "- x -- : -. --".split()
-
 
 def fpr_calls(pattern):
     def apply(wildcards):
@@ -401,26 +399,25 @@ rule fpr_vs_tpr:
         depth = int(wildcards.depth)
 
         plt.figure(figsize=(2.8, 2.5), dpi=90)
-        styles = fpr_vs_tpr_styles
-        for tp, fp, style, label in zip(input.tp, input.fp, styles, fpr_vs_tpr_labels):
+        for tp, fp, label in zip(input.tp, input.fp, fpr_vs_tpr_labels):
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
             _fpr, fpr_small = fpr(fp, tn_cov, depth)
             _tpr, tpr_small = tpr(tp, fn_cov, depth)
             d = pd.merge(_fpr, _tpr)
             if label == "ALPACA(FDR)":
-                plt.semilogx(d["fpr"][0], d["tpr"][0], style, mew=1)
+                plt.semilogx(d["fpr"][0], d["tpr"][0])
             else:
                 if label == "Strelka":
                     print(d[["fpr", "tpr"]])
-                plt.semilogx(d["fpr"], d["tpr"], style, label=label)
+                plt.semilogx(d["fpr"], d["tpr"], label=label)
 
         if "x" in wildcards.layout:
             plt.xlabel("FPR")
         if "y" in wildcards.layout:
             plt.ylabel("TPR")
         if "l" in wildcards.layout:
-            plt.legend(loc="lower right", handlelength=2.5)
+            plt.legend(loc="lower right")
         sns.despine()
 
         savefig(output[0], bbox_inches="tight")
@@ -428,13 +425,12 @@ rule fpr_vs_tpr:
 
 def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     plt.figure(figsize=(2.8, 2.5), dpi=90)
-    styles = fpr_vs_tpr_styles
-    for positives, style, label in zip(positives_files, styles, fpr_vs_tpr_labels):
+    for positives, label in zip(positives_files, fpr_vs_tpr_labels):
         if label == "ALPACA(FDR)" or label == "Strelka":
             continue
         positives = pd.read_table(positives)
         positives = positives[np.logical_and(positives["depth"] >= 4, positives["qual"] >= 1)]
-        sns.kdeplot(positives["qual"].apply(lambda q: 10 ** (-q / 10)), cumulative=True, label=label, ls=style, legend=False)
+        sns.kdeplot(positives["qual"].apply(lambda q: 10 ** (-q / 10)), cumulative=True, label=label, legend=False)
     plt.xlim((0,1))
     plt.ylim((0,1))
     if "x" in layout:
@@ -442,7 +438,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     if "y" in layout:
         plt.ylabel("CDF")
     if "l" in layout:
-        plt.legend(loc="lower right", handlelength=1.8)
+        plt.legend(loc="lower right")
     sns.despine()
     plt.locator_params(nbins=5)
     savefig(out_file, bbox_inches="tight")
@@ -491,10 +487,7 @@ rule plot_fdr_correlation:
 
         plt.figure(figsize=(3.86, 2.4), dpi=90)
 
-        #p = pd.concat([tp, fp])
-
-        linestyles = ["-", "--", ":"]
-        for fdr, ls in zip([0.05, 0.10, 0.25], linestyles):
+        for fdr in zip([0.05, 0.10, 0.25]):
             d = []
             for _ in range(100):
                 sample = pd.concat([
@@ -504,7 +497,7 @@ rule plot_fdr_correlation:
                 exp_fdr = sample["prob"].sum() / sample.shape[0]
                 true_fdr = sample["fp"].sum() / sample.shape[0]
                 d.append(exp_fdr)
-            sns.kdeplot(np.asarray(d), cumulative=True, label="true FDR={}".format(true_fdr), ls=ls)
+            sns.kdeplot(np.asarray(d), cumulative=True, label="true FDR={}".format(true_fdr))
         plt.xlim((0.15, 0.25))
         plt.xlabel("expected FDR")
         plt.ylabel("CDF")
