@@ -484,6 +484,7 @@ rule plot_fdr_correlation:
 
         p = pd.concat([tp, fp])
 
+        """
         x = np.arange(20)
         y = []
         for depth in x:
@@ -494,15 +495,15 @@ rule plot_fdr_correlation:
             true_fdr = p_[:i]["fp"].sum() / i
             y.append(true_fdr)
         plt.plot(x, y, "-")
-
         """
+
         for _ in range(100):
             sample = p.ix[np.random.choice(p.index, 1000)]
             max_fdr = sample["fp"].sum() / 1000
             sample.sort("prob", inplace=True)
             exp_fdr = sample["prob"].cumsum()
             x, y = [], []
-            for fdr in np.arange(0.01, min(max_fdr, 0.25), 0.01):
+            for fdr in np.arange(0.01, min(max_fdr, 0.10), 0.01):
                 i = np.searchsorted(exp_fdr, fdr, side="right")
                 true_fdr = sample[:i]["fp"].sum() / i
                 x.append(fdr)
@@ -511,7 +512,7 @@ rule plot_fdr_correlation:
 
         plt.ylabel("true FDR")
         plt.xlabel("controlled FDR")
-        """
+
         sns.despine()
         savefig(output[0], bbox_inches="tight")
 
