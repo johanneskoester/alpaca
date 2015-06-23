@@ -494,7 +494,7 @@ rule plot_fdr_correlation:
                 x.append(fdr)
                 y.append(fdr)
                 #plt.plot(fdr, true_fdr, ".", mew=1, alpha=.5)
-        sns.kdeplot(np.asarray(x), np.asarray(y))
+        sns.kdeplot(np.asarray(x), np.asarray(y), cut=5, shade=True)
         """
         for tpcount in range(3000, tp.shape[0]):
             true_fdr = 1000 / (tpcount + 1000)
