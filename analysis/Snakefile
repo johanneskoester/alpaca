@@ -411,9 +411,9 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
         positives = positives[positives["depth"] >= 4]
         #plt.hist(positives["qual"])#.plot("hist", grid=False)
         #break
-        cdf = positives["qual"].value_counts(normalize=True).sort_index().cumsum()
-        x = [(10 ** (-q / 10)) for q in cdf.index]
-        #x = cdf.index
+        cdf = positives["qual"].apply(lambda q: 10 ** (-q / 10)).value_counts(normalize=True).sort_index().cumsum()
+        #x = [() for q in cdf.index]
+        x = cdf.index
         plt.plot(x, cdf, style, label=label)
     #plt.xlim((0,200))
     plt.ylim((0,1))
