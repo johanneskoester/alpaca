@@ -492,7 +492,7 @@ rule plot_fdr_correlation:
                 i = np.searchsorted(exp_fdr, fdr, side="right")
                 true_fdr = sample[:i]["fp"].sum() / i
                 x.append(fdr)
-                y.append(fdr)
+                y.append(true_fdr)
                 #plt.plot(fdr, true_fdr, ".", mew=1, alpha=.5)
         sns.kdeplot(np.asarray(x), np.asarray(y), cut=5, shade=True)
         """
