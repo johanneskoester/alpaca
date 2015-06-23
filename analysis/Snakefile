@@ -488,7 +488,7 @@ rule plot_fdr_correlation:
 
         plt.figure(figsize=(3.86, 2.4), dpi=90)
 
-        for fdr in zip([0.05, 0.10, 0.25]):
+        for fdr in [0.05, 0.10, 0.25]:
             d = []
             for _ in range(100):
                 sample = pd.concat([
