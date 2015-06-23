@@ -411,11 +411,11 @@ def plot_rate_vs_qual(positives_files, negatives_file, out_file, rate="fpr"):
             continue
         if rate == "fpr":
             fp = pd.read_table(positives)
-            d, _ = fpr(fp, tn_cov, 4)
+            d, _ = fpr(fp, negatives, 4)
             y = d["fpr"]
         else:
             tp = pd.read_table(tp)
-            d, _ = tpr(tp, fn_cov, 4)
+            d, _ = tpr(tp, negatives, 4)
             y = d["tpr"]
         plt.semilogy(d["qual"], y, style, label=label)
     if "x" in wildcards.layout:
