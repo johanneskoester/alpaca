@@ -210,6 +210,7 @@ rule plot_coverages:
     resources: benchmark=1
     run:
         plt.figure(figsize=(3.86, 2.4), dpi=90)
+        plt.locator_params(nbins=5)
         for f in input:
             cov = np.loadtxt(f, dtype=np.int64)[1:]
             depth, freq = cov[:,0], cov[:,1]
