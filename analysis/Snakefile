@@ -429,7 +429,7 @@ def plot_rate_vs_qual(positives_files, negatives_file, out_file, rate="fpr"):
 
 rule fpr_vs_qual:
     input:
-        fp=expand("fpr/fp/{caller}/{{quer}}.txt", caller=fpr_vs_tpr_caller),
+        fp=expand("fpr/fp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller),
         tn_cov="fpr/tn/covered_depths/{query}.txt"
     output:
         "plots/fpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
@@ -470,15 +470,12 @@ rule plot_fdr_correlation:
 
         figure(figsize=(2.8, 2.5))
         for tpcount in range(fp.shape[0] * 3, tp.shape[0]):
-            max_fdr = fp.shape[0] / (tpcount + fp.shape[0])
+            true_fdr = fp.shape[0] / (tpcount + fp.shape[0])
             for _ in range(5):
                 sample = random.sample(tp.index, tpcount)
-                p = pd.concat([tp.ix[sample], fp]).sort("prob")
-                exp_fdr = p["qual"].cumsum()
-                for fdr in np.arange(0.01, max_fdr, 0.01):
-                    idx = np.searchsorted(exp_fdr, fdr, side="right")
-                    true_fdr = p[:idx]["fp"].sum() / idx
-                    plt.plot(fdr, true_fdr, ".", mew=2)
+                p = pd.concat([tp.ix[sample], fp])
+                exp_fdr = p["prob"].sum()
+                plt.plot(exp_fdr, true_fdr, ".", mew=2)
         plt.ylabel("true FDR")
         plt.xlabel("controlled FDR")
         savefig(output[0], bbox_inches="tight")
