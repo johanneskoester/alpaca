@@ -154,14 +154,14 @@ target_fpr_vs_qual = expand(
     "plots/fpr_vs_qual/{query}.{layout}.pdf",
     zip,
     query=config["fpr"]["queries"],
-    layout=["ly", "n", "xy", "x"]
+    layout=["y", "n", "lxy", "x"]
 )
 
 target_tpr_vs_qual = expand(
     "plots/tpr_vs_qual/{query}.{layout}.pdf",
     zip,
     query=config["tpr"]["queries"],
-    layout=["ly", "n", "xy", "x"]
+    layout=["y", "n", "lxy", "x"]
 )
 
 
