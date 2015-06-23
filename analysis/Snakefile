@@ -483,7 +483,7 @@ rule plot_fdr_correlation:
 
         p = pd.concat([tp, fp])
         for _ in range(100):
-            sample = p.ix[random.sample(list(p.index), 1000)]
+            sample = p.ix[np.random.cjoice(p.index, 1000)]
             sample.sort("prob", inplace=True)
             exp_fdr = sample["prob"].cumsum()
             for fdr in np.arange(0.01, 0.25, 0.01):
