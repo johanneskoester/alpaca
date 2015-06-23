@@ -410,7 +410,8 @@ rule fpr_vs_tpr:
                 plt.semilogx(d["fpr"][0], d["tpr"][0], "x", color=last_line.get_color(), mew=2)
             else:
                 last_line, = plt.semilogx(d["fpr"], d["tpr"], label=label)
-
+        plt.ylim((0,1))
+        plt.xlim((1e-8, 1e-4))
         if "x" in wildcards.layout:
             plt.xlabel("FPR")
         if "y" in wildcards.layout:
