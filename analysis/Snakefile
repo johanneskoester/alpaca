@@ -417,7 +417,8 @@ def plot_rate_vs_qual(positives_files, negatives_file, out_file, rate="fpr", lay
             tp = pd.read_table(tp)
             d, _ = tpr(tp, negatives, 4)
             y = d["tpr"]
-        plt.loglog(d["qual"], y, style, label=label)
+        plt.semilogy(d["qual"], y, style, label=label)
+    plt.xlim((0,300))
     if "x" in layout:
         plt.xlabel("quality")
     if "y" in layout:
