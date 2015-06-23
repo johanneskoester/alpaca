@@ -506,7 +506,7 @@ rule plot_fdr_correlation:
                 #true_fdr = sample[:i]["fp"].sum() / i
                 d.append(exp_fdr)
             sns.kdeplot(np.asarray(d), cumulative=True, label="true FDR={}".format(true_fdr), ls=ls)
-        plt.xlim((0, 0.25))
+        plt.xlim((0.15, 0.25))
         plt.xlabel("expected FDR")
         plt.ylabel("CDF")
         plt.locator_params(nbins=5)
