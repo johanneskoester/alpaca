@@ -480,7 +480,7 @@ rule plot_fdr_correlation:
         fp["prob"] = fp["qual"].apply(qual_to_prob)
         fp["fp"] = True
 
-        figure(figsize=(2.8, 2.5))
+        #figure(figsize=(2.8, 2.5))
 
         p = pd.concat([tp, fp])
 
