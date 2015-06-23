@@ -431,6 +431,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
         #cdf = positives["qual"].apply(lambda q: 10 ** (-q / 10)).value_counts(normalize=True).sort_index().cumsum()
         #x = cdf.index
         #plt.plot(x, cdf, style, label=label, clip_on=False)
+    plt.xlim((0,1))
     plt.ylim((0,1))
     if "x" in layout:
         plt.xlabel("posterior")
@@ -439,6 +440,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     if "l" in layout:
         plt.legend()
     sns.despine()
+    plt.locator_params(nbins=5)
     savefig(out_file, bbox_inches="tight")
 
 
