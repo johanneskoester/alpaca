@@ -499,7 +499,7 @@ rule plot_fdr_correlation:
                 i = np.searchsorted(exp_fdr, fdr, side="right")
                 true_fdr = sample[:i]["fp"].sum() / i
                 d.append(true_fdr)
-            sns.kdeplot(np.asarray(d), cumulative=True, label="FDR={}".format(fdr), clip_on=False, ls=ls)
+            sns.kdeplot(np.asarray(d), cumulative=True, label="FDR={}".format(fdr), ls=ls)
         plt.xlabel("true FDR")
         plt.ylabel("CDF")
         plt.locator_params(nbins=5)
