@@ -440,7 +440,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
 
 rule fpr_vs_qual:
     input:
-        fp=expand("fpr/fp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller)
+        fp=expand("fpr/fp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller[:-1])
     output:
         "plots/fpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
     run:
@@ -449,7 +449,7 @@ rule fpr_vs_qual:
 
 rule tpr_vs_qual:
     input:
-        tp=expand("tpr/tp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller)
+        tp=expand("tpr/tp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller[:-1])
     output:
         "plots/tpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
     run:
