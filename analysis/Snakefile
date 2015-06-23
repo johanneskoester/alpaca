@@ -401,28 +401,19 @@ rule fpr_vs_tpr:
         savefig(output[0], bbox_inches="tight")
 
 
-def plot_rate_vs_qual(positives_files, negatives_file, out_file, rate="fpr", layout="lxy"):
-    negatives = pd.read_table(negatives_file)
-
+def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     figure(figsize=(2.8, 2.5))
     styles = fpr_vs_tpr_styles
     for positives, style, label in zip(positives_files, styles, fpr_vs_tpr_labels):
         if label == "ALPACA(FDR)" or label == "Strelka":
             continue
-        if rate == "fpr":
-            fp = pd.read_table(positives)
-            d, _ = fpr(fp, negatives, 4)
-            y = d["fpr"]
-        else:
-            tp = pd.read_table(tp)
-            d, _ = tpr(tp, negatives, 4)
-            y = d["tpr"]
-        plt.semilogy(d["qual"], y, style, label=label)
+        cdf = positives["qual"].value_counts(normalize=True, sort=False, bins=100).cumsum()
+        plt.plot(cdf.index, cdf, style, label=label)
     plt.xlim((0,300))
     if "x" in layout:
         plt.xlabel("quality")
     if "y" in layout:
-        plt.ylabel(rate.upper())
+        plt.ylabel("CDF")
     if "l" in layout:
         plt.legend(loc="lower right", handlelength=2.5)
     savefig(out_file, bbox_inches="tight")
@@ -430,22 +421,20 @@ def plot_rate_vs_qual(positives_files, negatives_file, out_file, rate="fpr", lay
 
 rule fpr_vs_qual:
     input:
-        fp=expand("fpr/fp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller),
-        tn_cov="fpr/tn/covered_depths/{query}.txt"
+        fp=expand("fpr/fp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller)
     output:
         "plots/fpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
     run:
-        plot_rate_vs_qual(input.fp, input.tn_cov, output[0], "fpr", wildcards.layout)
+        plot_rate_vs_qual(input.fp, output[0], wildcards.layout)
 
 
 rule tpr_vs_qual:
     input:
-        tp=expand("tpr/tp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller),
-        fn_cov="tpr/fn/covered_depths/{query}.txt"
+        tp=expand("tpr/tp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller)
     output:
         "plots/tpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
     run:
-        plot_rate_vs_qual(input.tp, input.fn_cov, output[0], "tpr", wildcards.layout)
+        plot_rate_vs_qual(input.tp, output[0], wildcards.layout)
 
 
 ############################### estimate FDR ###################################
