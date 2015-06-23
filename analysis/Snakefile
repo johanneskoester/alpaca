@@ -471,18 +471,29 @@ rule plot_fdr_correlation:
         qual_to_prob = lambda qual: 10 ** (-qual / 10)
 
         tp = pd.read_table(input.tp)
-        fp = tp[tp["depth"] > 2]
+        #fp = tp[tp["depth"] > 2]
         tp["fp"] = False
         tp["prob"] = tp["qual"].apply(qual_to_prob)
 
         fp = pd.read_table(input.fp)
-        fp = fp[fp["depth"] > 2]
+        #fp = fp[fp["depth"] > 2]
         fp["prob"] = fp["qual"].apply(qual_to_prob)
         fp["fp"] = True
 
         figure(figsize=(2.8, 2.5))
 
         p = pd.concat([tp, fp])
+
+        x = np.arange(100)
+        for depth in x:
+            p_ = p[p["depth"] >= depth]
+            exp_fdr = p_["prob"].cumsum()
+            i = np.searchsorted(exp_fdr, 0.05, side="right")
+            true_fdr = sample[:i]["fp"].sum() / i
+            y.append(true_fdr)
+        plt.plot(x, y, "-")
+
+        """
         for _ in range(100):
             sample = p.ix[np.random.choice(p.index, 1000)]
             max_fdr = sample["fp"].sum() / 1000
@@ -495,20 +506,10 @@ rule plot_fdr_correlation:
                 x.append(fdr)
                 y.append(true_fdr)
             plt.plot(x, y, "-", mew=2, alpha=.5)
-        #sns.kdeplot(np.asarray(x), np.asarray(y), cut=5, shade=True)
-        """
-        for tpcount in range(3000, tp.shape[0]):
-            true_fdr = 1000 / (tpcount + 1000)
-            for _ in range(5):
-                fp_sample = random.sample(list(fp.index), 1000)
-                tp_sample = random.sample(list(tp.index), tpcount)
-                p = pd.concat([tp.ix[tp_sample], fp.ix[fp_sample]])
-                exp_fdr = p["prob"].sum()
-                print(exp_fdr, true_fdr)
-                plt.plot(exp_fdr, true_fdr, ".", mew=2)
-        """
+
         plt.ylabel("true FDR")
         plt.xlabel("controlled FDR")
+        """
         sns.despine()
         savefig(output[0], bbox_inches="tight")
 
