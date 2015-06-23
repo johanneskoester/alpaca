@@ -426,7 +426,7 @@ rule fpr_vs_tpr:
 def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     plt.figure(figsize=(2.8, 2.5), dpi=90)
     for positives, label in zip(positives_files, fpr_vs_tpr_labels):
-        if label == "ALPACA(FDR)" or label == "Strelka":
+        if label == "ALPACA(FDR)":
             continue
         positives = pd.read_table(positives)
         positives = positives[np.logical_and(positives["depth"] >= 4, positives["qual"] >= 1)]
@@ -446,7 +446,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
 
 rule fpr_vs_qual:
     input:
-        fp=expand("fpr/fp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller[:-1])
+        fp=lambda wildcards: expand("fpr/fp/{caller}/{query}.txt", query=wildcards.query, caller=fpr_vs_tpr_caller if wildcards.query == "A0-A1" else fpr_vs_tpr_caller[:-1]),
     output:
         "plots/fpr_vs_qual/{query}.{layout,[lxyn]+}.pdf"
     run:
@@ -455,7 +455,7 @@ rule fpr_vs_qual:
 
 rule tpr_vs_qual:
     input:
-        tp=expand("tpr/tp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller[:-1])
+        fp=lambda wildcards: expand("tpr/tp/{caller}/{query}.txt", query=wildcards.query, caller=fpr_vs_tpr_caller if wildcards.query == "A0-B0" else fpr_vs_tpr_caller[:-1])
     output:
         "plots/tpr_vs_qual/{query}.{layout,[lxyn]+}.pdf"
     run:
