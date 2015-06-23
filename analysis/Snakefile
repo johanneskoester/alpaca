@@ -262,9 +262,9 @@ def extract_depth_qual(calls, output, samples):
                 qual = record.Qual
             else:
                 qual = 0
-                if record.INFO["QSS"]:
+                if "QSS" in record.INFO:
                     qual = record.INFO["QSS"]
-                elif record.INFO["QSI"]:
+                elif "QSI" in record.INFO:
                     qual = record.INFO["QSI"]
             print(dp, qual, file=out, sep="\t")
 
