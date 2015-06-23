@@ -471,12 +471,12 @@ rule plot_fdr_correlation:
         qual_to_prob = lambda qual: 10 ** (-qual / 10)
 
         tp = pd.read_table(input.tp)
-        #fp = tp[tp["depth"] > 2]
+        fp = tp[tp["depth"] > 4]
         tp["fp"] = False
         tp["prob"] = tp["qual"].apply(qual_to_prob)
 
         fp = pd.read_table(input.fp)
-        #fp = fp[fp["depth"] > 2]
+        fp = fp[fp["depth"] > 4]
         fp["prob"] = fp["qual"].apply(qual_to_prob)
         fp["fp"] = True
 
@@ -508,7 +508,7 @@ rule plot_fdr_correlation:
                 true_fdr = sample[:i]["fp"].sum() / i
                 x.append(fdr)
                 y.append(true_fdr)
-            plt.plot(x, y, "-", mew=2, alpha=.5)
+            plt.plot(x, y, "k.", alpha=.5)
 
         plt.ylabel("true FDR")
         plt.xlabel("controlled FDR")
