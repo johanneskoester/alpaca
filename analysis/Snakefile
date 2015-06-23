@@ -213,7 +213,7 @@ rule plot_coverages:
         for f in input:
             cov = np.loadtxt(f, dtype=np.int64)[1:]
             depth, freq = cov[:,0], cov[:,1]
-            plt.semilogy(depth, freq, alpha=0.5, color=sbs.color_palette()[0])
+            plt.semilogy(depth, freq, alpha=0.5, color=sns.color_palette()[0])
             sites = freq.sum()
             mean = (depth * freq).sum() / sites
             print(mean)
