@@ -482,8 +482,8 @@ rule plot_fdr_correlation:
         for tpcount in range(3000, tp.shape[0]):
             true_fdr = 1000 / (tpcount + 1000)
             for _ in range(5):
-                fp_sample = random.sample(fp.index, 1000)
-                tp_sample = random.sample(tp.index, tpcount)
+                fp_sample = random.sample(list(fp.index), 1000)
+                tp_sample = random.sample(list(tp.index), tpcount)
                 p = pd.concat([tp.ix[tp_sample], fp.ix[fp_sample]])
                 exp_fdr = p["prob"].sum()
                 print(exp_fdr, true_fdr)
