@@ -427,9 +427,10 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
             continue
         positives = pd.read_table(positives)
         positives = positives[np.logical_and(positives["depth"] >= 4, positives["qual"] >= 1)]
-        cdf = positives["qual"].apply(lambda q: 10 ** (-q / 10)).value_counts(normalize=True).sort_index().cumsum()
-        x = cdf.index
-        plt.plot(x, cdf, style, label=label, clip_on=False)
+        sns.kdeplot(positives["qual"].apply(lambda q: 10 ** (-q / 10)), cumulative=True, label=label, ls=style, legend=False)
+        #cdf = positives["qual"].apply(lambda q: 10 ** (-q / 10)).value_counts(normalize=True).sort_index().cumsum()
+        #x = cdf.index
+        #plt.plot(x, cdf, style, label=label, clip_on=False)
     plt.ylim((0,1))
     if "x" in layout:
         plt.xlabel("posterior")
@@ -497,7 +498,6 @@ rule plot_fdr_correlation:
                 sample.sort("prob", inplace=True)
                 exp_fdr = sample["prob"].cumsum()
                 i = np.searchsorted(exp_fdr, fdr, side="right")
-                print(i)
                 true_fdr = sample[:i]["fp"].sum() / i
                 d.append(true_fdr)
             sns.kdeplot(np.asarray(d), cumulative=True, label="FDR={}".format(fdr), ls=ls)
