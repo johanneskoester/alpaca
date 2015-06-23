@@ -418,6 +418,7 @@ rule fpr_vs_tpr:
         if "l" in wildcards.layout:
             plt.legend(loc="lower right", handlelength=2.5)
         sns.despine()
+        
         savefig(output[0], bbox_inches="tight")
 
 
