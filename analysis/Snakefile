@@ -482,15 +482,16 @@ rule plot_fdr_correlation:
 
         plt.figure(figsize=(3.86, 2.4), dpi=90)
 
-        p = pd.concat([tp, fp])
+        #p = pd.concat([tp, fp])
 
         for fdr in [0.05, 0.10, 0.25]:
             d = []
             for _ in range(100):
-                sample = p.ix[np.random.choice(p.index, 1000)]
-                max_fdr = sample["fp"].sum() / 1000
-                if max_fdr < fdr:
-                    continue
+
+                sample = pd.concat([
+                    tp.ix[np.random.choice(p.index, 500)],
+                    fp.ix[np.random.choice(p.index, 500)]
+                ])
                 sample.sort("prob", inplace=True)
                 exp_fdr = sample["prob"].cumsum()
                 i = np.searchsorted(exp_fdr, fdr, side="right")
