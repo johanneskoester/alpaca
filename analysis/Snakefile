@@ -400,7 +400,7 @@ rule fpr_vs_tpr:
 
         plt.figure(figsize=(2.8, 2.5), dpi=90)
         last_line = None
-        for tp, fp, label in reversed(zip(input.tp, input.fp, fpr_vs_tpr_labels)):
+        for tp, fp, label in reversed(list(zip(input.tp, input.fp, fpr_vs_tpr_labels))):
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
             _fpr, fpr_small = fpr(fp, tn_cov, depth)
@@ -426,7 +426,7 @@ rule fpr_vs_tpr:
 
 def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     plt.figure(figsize=(2.8, 2.5), dpi=90)
-    for positives, label in reversed(zip(positives_files, fpr_vs_tpr_labels)):
+    for positives, label in reversed(list(zip(positives_files, fpr_vs_tpr_labels))):
         if label == "ALPACA(FDR)":
             continue
         positives = pd.read_table(positives)
