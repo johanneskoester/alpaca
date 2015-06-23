@@ -497,7 +497,7 @@ rule plot_fdr_correlation:
                     tp.ix[np.random.choice(tp.index, int(100 * (1-fdr) / fdr))],
                     fp.ix[np.random.choice(fp.index, 100)]
                 ])
-                exp_fdr = sample["prob"].sum()
+                exp_fdr = sample["prob"].sum() / sample.shape[0]
 
                 #sample.sort("prob", inplace=True)
                 #exp_fdr = sample["prob"].cumsum()
