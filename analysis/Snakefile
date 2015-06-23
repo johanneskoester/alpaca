@@ -480,22 +480,9 @@ rule plot_fdr_correlation:
         fp["prob"] = fp["qual"].apply(qual_to_prob)
         fp["fp"] = True
 
-        #figure(figsize=(2.8, 2.5))
+        plt.figure(figsize=(3.86, 2.4), dpi=90)
 
         p = pd.concat([tp, fp])
-
-        """
-        x = np.arange(20)
-        y = []
-        for depth in x:
-            p_ = p[p["depth"] >= depth]
-            p_.sort("prob", inplace=True)
-            exp_fdr = p_["prob"].cumsum()
-            i = np.searchsorted(exp_fdr, 0.05, side="right")
-            true_fdr = p_[:i]["fp"].sum() / i
-            y.append(true_fdr)
-        plt.plot(x, y, "-")
-        """
 
         for fdr in [0.01, 0.05, 0.10, 0.25]:
             d = []
@@ -512,23 +499,6 @@ rule plot_fdr_correlation:
             sns.kdeplot(np.asarray(d), cumulative=True, label="FDR={}".format(fdr))
         plt.xlabel("true FDR")
         plt.ylabel("CDF")
-
-        """
-        for _ in range(100):
-            sample = p.ix[np.random.choice(p.index, 1000)]
-            max_fdr = sample["fp"].sum() / 1000
-            sample.sort("prob", inplace=True)
-            exp_fdr = sample["prob"].cumsum()
-            x, y = [], []
-            for fdr in np.arange(0.01, min(max_fdr, 0.10), 0.001):
-                i = np.searchsorted(exp_fdr, fdr, side="right")
-                true_fdr = sample[:i]["fp"].sum() / i
-                x.append(fdr)
-                y.append(true_fdr)
-            plt.plot(x, y, "k.", alpha=.5)
-        plt.ylabel("true FDR")
-        plt.xlabel("controlled FDR")
-        """
         sns.despine()
         savefig(output[0], bbox_inches="tight")
 
