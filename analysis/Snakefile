@@ -399,6 +399,7 @@ rule fpr_vs_tpr:
         depth = int(wildcards.depth)
 
         plt.figure(figsize=(2.8, 2.5), dpi=90)
+        last_line = None
         for tp, fp, label in zip(input.tp, input.fp, fpr_vs_tpr_labels):
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
@@ -406,9 +407,9 @@ rule fpr_vs_tpr:
             _tpr, tpr_small = tpr(tp, fn_cov, depth)
             d = pd.merge(_fpr, _tpr)
             if label == "ALPACA(FDR)":
-                plt.semilogx(d["fpr"][0], d["tpr"][0])
+                plt.semilogx(d["fpr"][0], d["tpr"][0], "x", color=last_line.get_color())
             else:
-                plt.semilogx(d["fpr"], d["tpr"], label=label)
+                last_line, = plt.semilogx(d["fpr"], d["tpr"], label=label)
 
         if "x" in wildcards.layout:
             plt.xlabel("FPR")
