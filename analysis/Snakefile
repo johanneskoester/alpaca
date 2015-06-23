@@ -411,7 +411,7 @@ rule fpr_vs_tpr:
             _fpr, fpr_small = fpr(fp, tn_cov, depth)
             _tpr, tpr_small = tpr(tp, fn_cov, depth)
             d = pd.merge(_fpr, _tpr)
-            if label == "ALPACA(FDR)" or label == "Strelka":
+            if label == "ALPACA(FDR)":
                 plt.semilogx(d["fpr"][0], d["tpr"][0], style, mew=1)
             else:
                 plt.semilogx(d["fpr"], d["tpr"], style, label=label)
