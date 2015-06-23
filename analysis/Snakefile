@@ -18,7 +18,7 @@ from mpl_toolkits.axes_grid.axislines import Subplot
 from scipy.stats import kde, binned_statistic
 import seaborn as sns
 sns.set_style("ticks")
-sns.set_palette("Blues")
+sns.set_palette("Blues", reverse=True)
 
 savefig = partial(plt.savefig, bbox_inches="tight")
 
