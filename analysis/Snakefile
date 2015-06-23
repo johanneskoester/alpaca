@@ -151,6 +151,20 @@ target_fpr_vs_tpr =  expand(expand(
     layout=config["query_plot_layouts"]
 ), depth=[4, 20])
 
+target_fpr_vs_qual = expand(
+    "plots/fpr_vs_qual/{query}.{layout}.pdf",
+    zip,
+    query=config["fpr"]["queries"],
+    layout=config["query_plot_layouts"]
+)
+
+target_tpr_vs_qual = expand(
+    "plots/tpr_vs_qual/{query}.{layout}.pdf",
+    zip,
+    query=config["tpr"]["queries"],
+    layout=config["query_plot_layouts"]
+)
+
 
 ########################### Target rules #######################################
 
@@ -158,6 +172,8 @@ target_fpr_vs_tpr =  expand(expand(
 rule all:
     input:
         target_fpr_vs_tpr,
+        target_fpr_vs_qual,
+        target_tpr_vs_qual,
         expand(
             "data/reads/{sample}.readcount.txt",
             sample="NA12878 NA12892".split()
