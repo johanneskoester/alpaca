@@ -392,8 +392,8 @@ rule tpr_covered_depths:
 
 rule fpr_vs_tpr:
     input:
-        tp=lambda wildcards: expand("tpr/tp/{caller}/{{query_tpr}}.txt", caller=fpr_vs_tpr_caller if wildcards.query_tpr == "A0-B0" else fpr_vs_tpr_caller[:-1]),
-        fp=lambda wildcards: expand("fpr/fp/{caller}/{{query_fpr}}.txt", caller=fpr_vs_tpr_caller if wildcards.query_tpr == "A0-A1" else fpr_vs_tpr_caller[:-1]),
+        tp=lambda wildcards: expand("tpr/tp/{caller}/{query}.txt", query=wildcards.query_tpr, caller=fpr_vs_tpr_caller if wildcards.query_tpr == "A0-B0" else fpr_vs_tpr_caller[:-1]),
+        fp=lambda wildcards: expand("fpr/fp/{caller}/{query}.txt", query=wildcards.query_fpr, caller=fpr_vs_tpr_caller if wildcards.query_tpr == "A0-A1" else fpr_vs_tpr_caller[:-1]),
         fn_cov="tpr/fn/covered_depths/{query_tpr}.txt",
         tn_cov="fpr/tn/covered_depths/{query_fpr}.txt"
     output:
