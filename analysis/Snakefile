@@ -498,13 +498,14 @@ rule plot_fdr_correlation:
                     fp.ix[np.random.choice(fp.index, 20)]
                 ])
                 exp_fdr = sample["prob"].sum() / sample.shape[0]
+                true_fdr = sample["fp"].sum() / sample.shape[0]
 
                 #sample.sort("prob", inplace=True)
                 #exp_fdr = sample["prob"].cumsum()
                 #i = np.searchsorted(exp_fdr, fdr, side="right")
                 #true_fdr = sample[:i]["fp"].sum() / i
                 d.append(exp_fdr)
-            sns.kdeplot(np.asarray(d), cumulative=True, label="true FDR={}".format(fdr), ls=ls)
+            sns.kdeplot(np.asarray(d), cumulative=True, label="true FDR={}".format(true_fdr), ls=ls)
         plt.xlabel("expected FDR")
         plt.ylabel("CDF")
         plt.locator_params(nbins=5)
