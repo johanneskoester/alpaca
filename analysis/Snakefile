@@ -409,7 +409,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
             continue
         cdf = pd.read_table(positives)["qual"].value_counts(normalize=True).sort_index().cumsum()
         plt.plot([10 ** (-q / 10) for q in cdf.index], cdf, style, label=label)
-    plt.xlim((0,100))
+    #plt.xlim((0,100))
     plt.ylim((0,1))
     if "x" in layout:
         plt.xlabel("posterior probability")
