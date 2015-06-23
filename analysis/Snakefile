@@ -415,6 +415,8 @@ rule fpr_vs_tpr:
         if "y" in wildcards.layout:
             plt.ylabel("TPR")
         if "l" in wildcards.layout:
+            if len(fpr_vs_tpr_labels) > len(input.tp):
+                plt.semilogx([],[], label=fpr_vs_tpr_labels[-1])
             plt.legend(loc="lower right")
         sns.despine()
 
