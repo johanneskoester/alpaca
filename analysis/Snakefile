@@ -219,7 +219,7 @@ rule plot_coverages:
             print(mean)
             #plt.semilogy([mean, mean], [0, 10 ** 6], "--")
         plt.xlabel("depth")
-        plt.ylabel("frequency")
+        plt.ylabel("count")
         sns.despine()
         plt.gca().xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5))
         plt.savefig(output[0], bbox_inches="tight")
