@@ -408,7 +408,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
         if label == "ALPACA(FDR)" or label == "Strelka":
             continue
         positives = pd.read_table(positives)
-        positives = positives[positives["depth"] >= 4]
+        positives = positives[np.logical_and(positives["depth"] >= 4, positives["qual"] >= 1)]
         #plt.hist(positives["qual"])#.plot("hist", grid=False)
         #break
         cdf = positives["qual"].apply(lambda q: 10 ** (-q / 10)).value_counts(normalize=True).sort_index().cumsum()
