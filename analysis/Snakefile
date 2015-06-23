@@ -438,6 +438,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
         plt.ylabel("CDF")
     if "l" in layout:
         plt.legend(loc="lower right", handlelength=2.5)
+    sns.despine()
     savefig(out_file, bbox_inches="tight")
 
 
