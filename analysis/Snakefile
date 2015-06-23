@@ -18,6 +18,7 @@ from mpl_toolkits.axes_grid.axislines import Subplot
 from scipy.stats import kde, binned_statistic
 import seaborn as sns
 sns.set_style("ticks")
+sns.set_palette("Blues")
 
 savefig = partial(plt.savefig, bbox_inches="tight")
 
@@ -484,7 +485,8 @@ rule plot_fdr_correlation:
 
         #p = pd.concat([tp, fp])
 
-        for fdr in [0.05, 0.10, 0.25]:
+        linestyles = ["-", "--", ":"]
+        for fdr, ls in zip([0.05, 0.10, 0.25], linestyles):
             d = []
             for _ in range(100):
 
@@ -497,7 +499,7 @@ rule plot_fdr_correlation:
                 i = np.searchsorted(exp_fdr, fdr, side="right")
                 true_fdr = sample[:i]["fp"].sum() / i
                 d.append(true_fdr)
-            sns.kdeplot(np.asarray(d), cumulative=True, label="FDR={}".format(fdr), clip_on=False)
+            sns.kdeplot(np.asarray(d), cumulative=True, label="FDR={}".format(fdr), clip_on=False, ls=ls)
         plt.xlabel("true FDR")
         plt.ylabel("CDF")
         plt.locator_params(nbins=5)
