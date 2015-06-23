@@ -387,8 +387,8 @@ rule tpr_covered_depths:
 
 rule fpr_vs_tpr:
     input:
-        tp=expand("tpr/tp/{caller}/{{query_tpr}}.txt", caller=fpr_vs_tpr_caller),
-        fp=expand("fpr/fp/{caller}/{{query_fpr}}.txt", caller=fpr_vs_tpr_caller),
+        tp=expand("tpr/tp/{caller}/{{query_tpr}}.txt", caller=fpr_vs_tpr_caller[:-1]),
+        fp=expand("fpr/fp/{caller}/{{query_fpr}}.txt", caller=fpr_vs_tpr_caller[:-1]),
         fn_cov="tpr/fn/covered_depths/{query_tpr}.txt",
         tn_cov="fpr/tn/covered_depths/{query_fpr}.txt"
     output:
@@ -418,7 +418,7 @@ rule fpr_vs_tpr:
         if "l" in wildcards.layout:
             plt.legend(loc="lower right", handlelength=2.5)
         sns.despine()
-        
+
         savefig(output[0], bbox_inches="tight")
 
 
