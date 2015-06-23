@@ -413,9 +413,9 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     #plt.xlim((0,100))
     #plt.ylim((0,1))
     if "x" in layout:
-        plt.xlabel("1 - posterior probability")
+        plt.xlabel("quality")
     if "y" in layout:
-        plt.ylabel("CDF")
+        plt.ylabel("density")
     if "l" in layout:
         plt.legend(loc="lower right", handlelength=2.5)
     savefig(out_file, bbox_inches="tight")
