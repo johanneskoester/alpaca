@@ -484,7 +484,7 @@ rule plot_fdr_correlation:
 
         p = pd.concat([tp, fp])
 
-        x = np.arange(100)
+        x = np.arange(300)
         y = []
         for depth in x:
             p_ = p[p["depth"] >= depth]
