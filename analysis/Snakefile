@@ -487,9 +487,10 @@ rule plot_fdr_correlation:
         x = np.arange(100)
         for depth in x:
             p_ = p[p["depth"] >= depth]
+            p_.sort("prob", inplace=True)
             exp_fdr = p_["prob"].cumsum()
             i = np.searchsorted(exp_fdr, 0.05, side="right")
-            true_fdr = sample[:i]["fp"].sum() / i
+            true_fdr = p_[:i]["fp"].sum() / i
             y.append(true_fdr)
         plt.plot(x, y, "-")
 
