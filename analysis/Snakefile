@@ -222,6 +222,7 @@ rule plot_coverages:
         plt.xlabel("depth")
         plt.ylabel("frequency")
         sns.despine()
+        plt.locator_params(nbins=5)
         plt.savefig(output[0], bbox_inches="tight")
 
 
