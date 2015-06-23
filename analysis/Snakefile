@@ -484,6 +484,7 @@ rule plot_fdr_correlation:
                 sample = random.sample(tp.index, tpcount)
                 p = pd.concat([tp.ix[sample], fp])
                 exp_fdr = p["prob"].sum()
+                print(exp_fdr, true_fdr)
                 plt.plot(exp_fdr, true_fdr, ".", mew=2)
         plt.ylabel("true FDR")
         plt.xlabel("controlled FDR")
