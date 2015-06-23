@@ -408,8 +408,6 @@ rule fpr_vs_tpr:
             if label == "ALPACA(FDR)":
                 plt.semilogx(d["fpr"][0], d["tpr"][0])
             else:
-                if label == "Strelka":
-                    print(d[["fpr", "tpr"]])
                 plt.semilogx(d["fpr"], d["tpr"], label=label)
 
         if "x" in wildcards.layout:
