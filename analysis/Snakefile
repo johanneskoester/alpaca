@@ -420,7 +420,7 @@ rule fpr_vs_tpr:
 
 
 def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
-    figure(figsize=(2.8, 2.5))
+    plt.figure(figsize=(2.8, 2.5), dpi=90)
     styles = fpr_vs_tpr_styles
     for positives, style, label in zip(positives_files, styles, fpr_vs_tpr_labels):
         if label == "ALPACA(FDR)" or label == "Strelka":
@@ -437,7 +437,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     if "y" in layout:
         plt.ylabel("CDF")
     if "l" in layout:
-        plt.legend(loc="lower right", handlelength=2.5)
+        plt.legend()
     sns.despine()
     savefig(out_file, bbox_inches="tight")
 
