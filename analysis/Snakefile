@@ -478,6 +478,7 @@ rule plot_fdr_correlation:
         fp["fp"] = True
 
         figure(figsize=(2.8, 2.5))
+        print(fp.shape[0] * 3, tp.shape[0])
         for tpcount in range(fp.shape[0] * 3, tp.shape[0]):
             true_fdr = fp.shape[0] / (tpcount + fp.shape[0])
             for _ in range(5):
