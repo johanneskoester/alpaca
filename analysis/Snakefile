@@ -498,6 +498,7 @@ rule plot_fdr_correlation:
                 sample.sort("prob", inplace=True)
                 exp_fdr = sample["prob"].cumsum() / sample.shape[0]
                 i = np.searchsorted(exp_fdr, 0.05, side="right")
+                print(i, exp_fdr)
                 true_fdr = sample[:i]["fp"].sum() / i
                 #exp_fdr = sample["prob"].sum() / sample.shape[0]
                 #true_fdr = sample["fp"].sum() / sample.shape[0]
