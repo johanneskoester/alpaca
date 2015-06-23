@@ -18,7 +18,6 @@ from mpl_toolkits.axes_grid.axislines import Subplot
 from scipy.stats import kde, binned_statistic
 import seaborn as sns
 sns.set_style("ticks")
-#sns.set_palette(sns.xkcd_palette(["windows blue"]))
 
 savefig = partial(plt.savefig, bbox_inches="tight")
 
@@ -214,7 +213,7 @@ rule plot_coverages:
         for f in input:
             cov = np.loadtxt(f, dtype=np.int64)[1:]
             depth, freq = cov[:,0], cov[:,1]
-            plt.semilogy(depth, freq, alpha=0.5)
+            plt.semilogy(depth, freq, alpha=0.5, color=sbs.color_palette()[0])
             sites = freq.sum()
             mean = (depth * freq).sum() / sites
             print(mean)
