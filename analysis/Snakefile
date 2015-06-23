@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid.axislines import Subplot
 from scipy.stats import kde, binned_statistic
 import seaborn as sns
+sns.set_style("white")
 
 savefig = partial(plt.savefig, bbox_inches="tight")
 
@@ -508,6 +509,7 @@ rule plot_fdr_correlation:
         """
         plt.ylabel("true FDR")
         plt.xlabel("controlled FDR")
+        sns.despine()
         savefig(output[0], bbox_inches="tight")
 
 ############################### run time performance ###########################
