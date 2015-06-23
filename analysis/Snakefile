@@ -75,7 +75,7 @@ config = {
         ]
     },
     "query_plot_layouts": [
-        "y", "l", "xy", "x"
+        "ly", "n", "xy", "x"
     ],
     "tpr": {
         "sample": "NA12878",
@@ -391,7 +391,7 @@ rule fpr_vs_tpr:
         fn_cov="tpr/fn/covered_depths/{query_tpr}.txt",
         tn_cov="fpr/tn/covered_depths/{query_fpr}.txt"
     output:
-        "plots/fpr_vs_tpr/{depth,[0-9]+}/{query_fpr}.{query_tpr}.{layout,[lxy]+}.pdf"
+        "plots/fpr_vs_tpr/{depth,[0-9]+}/{query_fpr}.{query_tpr}.{layout,[nlxy]+}.pdf"
     run:
         tn_cov = pd.read_table(input.tn_cov)
         fn_cov = pd.read_table(input.fn_cov)
