@@ -493,18 +493,19 @@ rule plot_fdr_correlation:
         for fdr, ls in zip([0.05, 0.10, 0.25], linestyles):
             d = []
             for _ in range(100):
-
                 sample = pd.concat([
-                    tp.ix[np.random.choice(tp.index, 750)],
-                    fp.ix[np.random.choice(fp.index, 250)]
+                    tp.ix[np.random.choice(tp.index, int(100 * (1-fdr) / fdr))],
+                    fp.ix[np.random.choice(fp.index, 100)]
                 ])
-                sample.sort("prob", inplace=True)
-                exp_fdr = sample["prob"].cumsum()
-                i = np.searchsorted(exp_fdr, fdr, side="right")
-                true_fdr = sample[:i]["fp"].sum() / i
-                d.append(true_fdr)
-            sns.kdeplot(np.asarray(d), cumulative=True, label="FDR={}".format(fdr), ls=ls)
-        plt.xlabel("true FDR")
+                exp_fdr = sample["prob"].sum()
+
+                #sample.sort("prob", inplace=True)
+                #exp_fdr = sample["prob"].cumsum()
+                #i = np.searchsorted(exp_fdr, fdr, side="right")
+                #true_fdr = sample[:i]["fp"].sum() / i
+                d.append(exp_fdr)
+            sns.kdeplot(np.asarray(d), cumulative=True, label="true FDR={}".format(fdr), ls=ls)
+        plt.xlabel("expected FDR")
         plt.ylabel("CDF")
         plt.locator_params(nbins=5)
         sns.despine()
