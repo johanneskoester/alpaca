@@ -489,8 +489,8 @@ rule plot_fdr_correlation:
             for _ in range(100):
 
                 sample = pd.concat([
-                    tp.ix[np.random.choice(tp.index, 500)],
-                    fp.ix[np.random.choice(fp.index, 500)]
+                    tp.ix[np.random.choice(tp.index, 250)],
+                    fp.ix[np.random.choice(fp.index, 750)]
                 ])
                 sample.sort("prob", inplace=True)
                 exp_fdr = sample["prob"].cumsum()
