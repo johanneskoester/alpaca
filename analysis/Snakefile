@@ -503,7 +503,7 @@ rule plot_fdr_correlation:
                 #true_fdr = sample["fp"].sum() / sample.shape[0]
                 d.append(true_fdr)
             sns.kdeplot(np.asarray(d), cumulative=True, label="total FDR={}".format(true_fdr))
-        plt.xlim((0.15, 0.25))
+        #plt.xlim((0.15, 0.25))
         plt.xlabel("true FDR after control")
         plt.ylabel("CDF")
         sns.despine()
