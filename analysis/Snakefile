@@ -74,9 +74,6 @@ config = {
             "A0-A1", "A0-(A1+A2)", "(A0+A1)-A2", "(A0+A1)-(A2+A3)"
         ]
     },
-    "query_plot_layouts": [
-        "ly", "n", "xy", "x"
-    ],
     "tpr": {
         "sample": "NA12878",
         "filter_sample": "NA12892",
@@ -150,21 +147,21 @@ target_fpr_vs_tpr =  expand(expand(
     zip,
     query_fpr=config["fpr"]["queries"],
     query_tpr=config["tpr"]["queries"],
-    layout=config["query_plot_layouts"]
+    layout=["y", "l", "xy", "x"]
 ), depth=[4, 20])
 
 target_fpr_vs_qual = expand(
     "plots/fpr_vs_qual/{query}.{layout}.pdf",
     zip,
     query=config["fpr"]["queries"],
-    layout=config["query_plot_layouts"]
+    layout=["ly", "n", "xy", "x"]
 )
 
 target_tpr_vs_qual = expand(
     "plots/tpr_vs_qual/{query}.{layout}.pdf",
     zip,
     query=config["tpr"]["queries"],
-    layout=config["query_plot_layouts"]
+    layout=["ly", "n", "xy", "x"]
 )
 
 
@@ -414,6 +411,8 @@ rule fpr_vs_tpr:
             if label == "ALPACA(FDR)":
                 plt.semilogx(d["fpr"][0], d["tpr"][0], style, mew=1)
             else:
+                if label == "Strelka":
+                    print(d[["fpr", "tpr"]])
                 plt.semilogx(d["fpr"], d["tpr"], style, label=label)
 
         if "x" in wildcards.layout:
