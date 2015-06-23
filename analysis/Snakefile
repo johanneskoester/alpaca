@@ -409,18 +409,14 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
             continue
         positives = pd.read_table(positives)
         positives = positives[np.logical_and(positives["depth"] >= 4, positives["qual"] >= 1)]
-        #plt.hist(positives["qual"])#.plot("hist", grid=False)
-        #break
         cdf = positives["qual"].apply(lambda q: 10 ** (-q / 10)).value_counts(normalize=True).sort_index().cumsum()
-        #x = [() for q in cdf.index]
         x = cdf.index
-        plt.plot(x, cdf, style, label=label)
-    #plt.xlim((0,200))
+        plt.plot(x, cdf, style, label=label, clip_on=False)
     plt.ylim((0,1))
     if "x" in layout:
         plt.xlabel("posterior")
     if "y" in layout:
-        plt.ylabel("density")
+        plt.ylabel("CDF")
     if "l" in layout:
         plt.legend(loc="lower right", handlelength=2.5)
     savefig(out_file, bbox_inches="tight")
