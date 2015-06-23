@@ -408,6 +408,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
         if label == "ALPACA(FDR)" or label == "Strelka":
             continue
         pd.read_table(positives)["qual"].plot("kde", grid=False)
+        break
         #cdf = pd.read_table(positives)["qual"].value_counts(normalize=True).sort_index().cumsum()
         #plt.plot([1 - (10 ** (-q / 10)) for q in cdf.index], cdf, style, label=label)
     #plt.xlim((0,100))
