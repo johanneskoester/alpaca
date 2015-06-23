@@ -484,7 +484,7 @@ rule plot_fdr_correlation:
 
         p = pd.concat([tp, fp])
 
-        for fdr in [0.01, 0.05, 0.10, 0.25]:
+        for fdr in [0.05, 0.10, 0.25]:
             d = []
             for _ in range(100):
                 sample = p.ix[np.random.choice(p.index, 1000)]
@@ -499,6 +499,7 @@ rule plot_fdr_correlation:
             sns.kdeplot(np.asarray(d), cumulative=True, label="FDR={}".format(fdr))
         plt.xlabel("true FDR")
         plt.ylabel("CDF")
+        plt.xticks(5)
         sns.despine()
         savefig(output[0], bbox_inches="tight")
 
