@@ -409,7 +409,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
             continue
         cdf = pd.read_table(positives)["qual"].value_counts(normalize=True).sort_index().cumsum()
         plt.plot(cdf.index, cdf, style, label=label)
-    plt.xlim((0,200))
+    plt.xlim((0,100))
     if "x" in layout:
         plt.xlabel("quality")
     if "y" in layout:
