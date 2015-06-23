@@ -401,7 +401,7 @@ rule fpr_vs_tpr:
         savefig(output[0], bbox_inches="tight")
 
 
-def plot_rate_vs_qual(positives_files, negatives_file, out_file, rate="fpr"):
+def plot_rate_vs_qual(positives_files, negatives_file, out_file, rate="fpr", layout="lxy"):
     negatives = pd.read_table(negatives_file)
 
     figure(figsize=(2.8, 2.5))
@@ -418,11 +418,11 @@ def plot_rate_vs_qual(positives_files, negatives_file, out_file, rate="fpr"):
             d, _ = tpr(tp, negatives, 4)
             y = d["tpr"]
         plt.semilogy(d["qual"], y, style, label=label)
-    if "x" in wildcards.layout:
+    if "x" in layout:
         plt.xlabel("quality")
-    if "y" in wildcards.layout:
+    if "y" in layout:
         plt.ylabel(rate.upper())
-    if "l" in wildcards.layout:
+    if "l" in layout:
         plt.legend(loc="lower right", handlelength=2.5)
     savefig(out_file, bbox_inches="tight")
 
@@ -434,7 +434,7 @@ rule fpr_vs_qual:
     output:
         "plots/fpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
     run:
-        plot_rate_vs_qual(input.fp, input.tn_cov, output[0], "fpr")
+        plot_rate_vs_qual(input.fp, input.tn_cov, output[0], "fpr", wildcards.layout)
 
 
 rule tpr_vs_qual:
@@ -444,7 +444,7 @@ rule tpr_vs_qual:
     output:
         "plots/tpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
     run:
-        plot_rate_vs_qual(input.tp, input.fn_cov, output[0], "tpr")
+        plot_rate_vs_qual(input.tp, input.fn_cov, output[0], "tpr", wildcards.layout)
 
 
 ############################### estimate FDR ###################################
