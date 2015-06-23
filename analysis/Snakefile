@@ -299,7 +299,7 @@ rule fpr_covered_depths:
 
 def rate(positive, negative_depths, label, min_depth=1):
     positive = positive[positive["depth"] >= min_depth]
-    #positive = positive[positive["qual"] >= 10]
+    positive = positive[positive["qual"] >= 1]
     negative_total = (negative_depths["depth"] >= min_depth).sum()
 
     positive_cum = np.bincount(np.asarray(np.rint(positive["qual"]), dtype=np.int64))[::-1].cumsum()[::-1]
