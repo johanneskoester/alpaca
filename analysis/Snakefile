@@ -503,7 +503,7 @@ rule plot_fdr_correlation:
             sample.sort("prob", inplace=True)
             exp_fdr = sample["prob"].cumsum()
             x, y = [], []
-            for fdr in np.arange(0.01, min(max_fdr, 0.10), 0.01):
+            for fdr in np.arange(0.01, min(max_fdr, 0.10), 0.001):
                 i = np.searchsorted(exp_fdr, fdr, side="right")
                 true_fdr = sample[:i]["fp"].sum() / i
                 x.append(fdr)
