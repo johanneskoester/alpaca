@@ -9,6 +9,7 @@ import math
 
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import pysam
 import vcf
 import matplotlib
@@ -482,6 +483,7 @@ rule plot_fdr_correlation:
         figure(figsize=(2.8, 2.5))
 
         p = pd.concat([tp, fp])
+        x, y = [], []
         for _ in range(100):
             sample = p.ix[np.random.choice(p.index, 1000)]
             max_fdr = sample["fp"].sum() / 1000
@@ -490,7 +492,10 @@ rule plot_fdr_correlation:
             for fdr in np.arange(0.01, min(max_fdr, 0.25), 0.01):
                 i = np.searchsorted(exp_fdr, fdr, side="right")
                 true_fdr = sample[:i]["fp"].sum() / i
-                plt.plot(fdr, true_fdr, ".", mew=1, alpha=.5)
+                x.append(fdr)
+                y.append(fdr)
+                #plt.plot(fdr, true_fdr, ".", mew=1, alpha=.5)
+        sns.kdeplot(x, y)
         """
         for tpcount in range(3000, tp.shape[0]):
             true_fdr = 1000 / (tpcount + 1000)
