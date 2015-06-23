@@ -482,19 +482,19 @@ rule plot_fdr_correlation:
         figure(figsize=(2.8, 2.5))
 
         p = pd.concat([tp, fp])
-        x, y = [], []
         for _ in range(100):
             sample = p.ix[np.random.choice(p.index, 1000)]
             max_fdr = sample["fp"].sum() / 1000
             sample.sort("prob", inplace=True)
             exp_fdr = sample["prob"].cumsum()
+            x, y = [], []
             for fdr in np.arange(0.01, min(max_fdr, 0.25), 0.01):
                 i = np.searchsorted(exp_fdr, fdr, side="right")
                 true_fdr = sample[:i]["fp"].sum() / i
                 x.append(fdr)
                 y.append(true_fdr)
-                #plt.plot(fdr, true_fdr, ".", mew=1, alpha=.5)
-        sns.kdeplot(np.asarray(x), np.asarray(y), cut=5, shade=True)
+            plt.plot(x, y, "-", mew=2, alpha=.5)
+        #sns.kdeplot(np.asarray(x), np.asarray(y), cut=5, shade=True)
         """
         for tpcount in range(3000, tp.shape[0]):
             true_fdr = 1000 / (tpcount + 1000)
