@@ -448,7 +448,7 @@ rule fpr_vs_qual:
     input:
         fp=expand("fpr/fp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller[:-1])
     output:
-        "plots/fpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
+        "plots/fpr_vs_qual/{query}.{layout,[lxyn]+}.pdf"
     run:
         plot_rate_vs_qual(input.fp, output[0], wildcards.layout)
 
@@ -457,7 +457,7 @@ rule tpr_vs_qual:
     input:
         tp=expand("tpr/tp/{caller}/{{query}}.txt", caller=fpr_vs_tpr_caller[:-1])
     output:
-        "plots/tpr_vs_qual/{query}.{layout,[lxy]+}.pdf"
+        "plots/tpr_vs_qual/{query}.{layout,[lxyn]+}.pdf"
     run:
         plot_rate_vs_qual(input.tp, output[0], wildcards.layout)
 
