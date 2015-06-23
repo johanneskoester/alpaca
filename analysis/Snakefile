@@ -455,7 +455,7 @@ rule fpr_vs_qual:
 
 rule tpr_vs_qual:
     input:
-        fp=lambda wildcards: expand("tpr/tp/{caller}/{query}.txt", query=wildcards.query, caller=fpr_vs_tpr_caller if wildcards.query == "A0-B0" else fpr_vs_tpr_caller[:-1])
+        tp=lambda wildcards: expand("tpr/tp/{caller}/{query}.txt", query=wildcards.query, caller=fpr_vs_tpr_caller if wildcards.query == "A0-B0" else fpr_vs_tpr_caller[:-1])
     output:
         "plots/tpr_vs_qual/{query}.{layout,[lxyn]+}.pdf"
     run:
