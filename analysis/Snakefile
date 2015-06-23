@@ -497,6 +497,23 @@ rule plot_fdr_correlation:
         plt.plot(x, y, "-")
         """
 
+        for fdr in [0.01, 0.05, 0.10, 0.25]:
+            d = []
+            for _ in range(100):
+                sample = p.ix[np.random.choice(p.index, 1000)]
+                max_fdr = sample["fp"].sum() / 1000
+                if max_fdr < fdr:
+                    continue
+                sample.sort("prob", inplace=True)
+                exp_fdr = sample["prob"].cumsum()
+                i = np.searchsorted(exp_fdr, fdr, side="right")
+                true_fdr = sample[:i]["fp"].sum() / i
+                d.append(true_fdr)
+                sns.kdeplot(d, cumulative=True, label="FDR={}".format(fdr))
+        plt.xlabel("true FDR")
+        plt.ylabel("CDF")
+
+        """
         for _ in range(100):
             sample = p.ix[np.random.choice(p.index, 1000)]
             max_fdr = sample["fp"].sum() / 1000
@@ -509,10 +526,9 @@ rule plot_fdr_correlation:
                 x.append(fdr)
                 y.append(true_fdr)
             plt.plot(x, y, "k.", alpha=.5)
-
         plt.ylabel("true FDR")
         plt.xlabel("controlled FDR")
-
+        """
         sns.despine()
         savefig(output[0], bbox_inches="tight")
 
