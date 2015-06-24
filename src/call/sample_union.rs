@@ -61,7 +61,8 @@ impl SampleUnion {
     fn allelefreq_likelihood(sample: usize, m: usize, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
         let lh = likelihoods[sample].with_allelefreq(m);
         let prior = (1.0 / lh.len() as f64).ln();
-        utils::log_prob_sum(&lh) + prior
+        let aflh = utils::log_prob_sum(&lh) + prior;
+        aflh
     }
 
     fn marginal(&self, likelihoods: &[GenotypeLikelihoods]) -> (LogProb, LogProb) {

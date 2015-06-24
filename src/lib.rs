@@ -1,9 +1,10 @@
-#![feature(core)]
 #![feature(plugin)]
 #![plugin(peg_syntax_ext)]
-#![feature(collections)]
-#![feature(collections_drain)]
 #![feature(step_by)]
+#![feature(vec_push_all)]
+#![feature(drain)]
+#![feature(iter_arith)]
+
 
 extern crate itertools;
 extern crate simple_parallel;

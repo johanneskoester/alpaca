@@ -11,13 +11,17 @@ license = "MIT"
 
 [dependencies]
 itertools = "*"
-peg = "*"
 simple_parallel = "*"
 argparse = "*"
 tempdir = "*"
 log = "*"
 bio = ">=0.3.7"
-rust-htslib = ">=0.4.0"
+
+[dependencies.rust-htslib]
+git = "https://github.com/christopher-schroeder/rust-htslib.git"
+
+[dependencies.peg]
+git = "https://github.com/kevinmehall/rust-peg.git"
 
 [[bin]]
 name = "alpaca"
