@@ -432,7 +432,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
             continue
         positives = pd.read_table(positives)
         positives = positives[np.logical_and(positives["depth"] >= 4, positives["qual"] >= 1)]
-        sns.kdeplot(positives["qual"].apply(lambda q: 10 ** (-q / 10)), cumulative=True, label=label, legend=False)
+        sns.kdeplot(positives["qual"].apply(lambda q: 10 ** (-q / 10)), label=label, legend=False)
     plt.xlim((0,1))
     plt.ylim((0,1))
     if "x" in layout:
