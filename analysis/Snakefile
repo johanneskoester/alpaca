@@ -503,7 +503,7 @@ rule plot_fdr_correlation:
         """
         plt.legend()
 
-        plt.xlim((0,1))
+        #plt.xlim((0,1))
         plt.xlabel("quality")
         plt.ylabel("density")
 
