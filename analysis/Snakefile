@@ -493,10 +493,8 @@ rule plot_fdr_correlation:
 
         p = pd.concat([tp, fp])
         p.sort("prob", inplace=True)
-        p.reset_index(drop=True)
         exp_fdr = p["prob"].cumsum() / p.shape[0]
-        print(exp_fdr)
-        plt.plot(exp_fdr.index, exp_fdr, label="expected FDR")
+        plt.plot(p["prob"], exp_fdr, label="expected FDR")
 
         plt.xlim((0,1))
         plt.xlabel("posterior probability")
