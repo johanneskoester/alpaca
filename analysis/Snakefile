@@ -488,13 +488,15 @@ rule plot_fdr_correlation:
         fp["fp"] = True
 
         plt.figure(figsize=(3.86, 2.4), dpi=90)
-        sns.kdeplot(fp["prob"], label="FP", legend=False, cumulative=True)
-        sns.kdeplot(tp["prob"], label="TP", legend=False, cumulative=True)
+        sns.kdeplot(fp["prob"], label="FP", legend=False)
+        sns.kdeplot(tp["prob"], label="TP", legend=False)
 
         p = pd.concat([tp, fp])
         p.sort("prob", inplace=True)
         exp_fdr = p["prob"].cumsum() / p.shape[0]
-        plt.plot(p["prob"], exp_fdr, label="expected FDR")
+        for fdr in [0.01, 0.05, 0.1, 0.25]:
+            i = np.searchsorted(exp_fdr, 0.05, side="right")
+            plt.plot([p["prob"][i]] * 2, [0, plt.ylim()[1]], label="FDR={}".format(fdr), ls="--")
         plt.legend()
 
         plt.xlim((0,1))
