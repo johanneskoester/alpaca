@@ -490,6 +490,9 @@ rule plot_fdr_correlation:
         plt.figure(figsize=(3.86, 2.4), dpi=90)
         sns.kdeplot(fp["prob"], label="FP")
         sns.kdeplot(tp["prob"], label="TP")
+        plt.xlim((0,1))
+        plt.xlabel("posterior probability")
+        plt.ylabel("density")
         """
         for total_fdr in [0.05, 0.10, 0.25]:
             d = []
