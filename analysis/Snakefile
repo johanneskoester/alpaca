@@ -488,7 +488,9 @@ rule plot_fdr_correlation:
         fp["fp"] = True
 
         plt.figure(figsize=(3.86, 2.4), dpi=90)
-
+        sns.kdeplot(fp["prob"], label="FP")
+        sns.kdeplot(tp["prob"], label="TP")
+        """
         for total_fdr in [0.05, 0.10, 0.25]:
             d = []
             for _ in range(100):
@@ -509,6 +511,7 @@ rule plot_fdr_correlation:
         #plt.xlim((0.15, 0.25))
         plt.xlabel("true FDR after control")
         plt.ylabel("CDF")
+        """
         sns.despine()
         savefig(output[0], bbox_inches="tight")
 
