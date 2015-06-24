@@ -478,12 +478,12 @@ rule plot_fdr_correlation:
         qual_to_prob = lambda qual: 10 ** (-qual / 10)
 
         tp = pd.read_table(input.tp)
-        fp = tp[tp["depth"] >= 4]
+        #fp = tp[tp["depth"] >= 4]
         tp["fp"] = False
         tp["prob"] = tp["qual"].apply(qual_to_prob)
 
         fp = pd.read_table(input.fp)
-        fp = fp[fp["depth"] >= 4]
+        #fp = fp[fp["depth"] >= 4]
         fp["prob"] = fp["qual"].apply(qual_to_prob)
         fp["fp"] = True
 
@@ -491,6 +491,7 @@ rule plot_fdr_correlation:
         sns.kdeplot(fp["prob"], label="FP", legend=False)
         sns.kdeplot(tp["prob"], label="TP", legend=False)
 
+        """
         p = pd.concat([tp, fp])
         p.sort("prob", inplace=True)
         p = p.reset_index(drop=True)
@@ -499,6 +500,7 @@ rule plot_fdr_correlation:
             i = np.searchsorted(exp_fdr, fdr, side="left")
             plt.plot([p["prob"][i]] * 2, [0, plt.ylim()[1]], label="FDR={}".format(fdr), ls="--")
             print(p[:i]["fp"].sum() / i)
+        """
         plt.legend()
 
         plt.xlim((0,1))
