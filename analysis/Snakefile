@@ -488,8 +488,8 @@ rule plot_fdr_correlation:
         fp["fp"] = True
 
         plt.figure(figsize=(3.86, 2.4), dpi=90)
-        sns.kdeplot(fp["prob"], label="FP", legend=False)
-        sns.kdeplot(tp["prob"], label="TP", legend=False)
+        sns.kdeplot(fp["qual"], label="FP", legend=False)
+        sns.kdeplot(tp["qual"], label="TP", legend=False)
 
         """
         p = pd.concat([tp, fp])
@@ -504,7 +504,7 @@ rule plot_fdr_correlation:
         plt.legend()
 
         plt.xlim((0,1))
-        plt.xlabel("posterior probability")
+        plt.xlabel("quality")
         plt.ylabel("density")
 
         """
