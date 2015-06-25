@@ -165,13 +165,13 @@ mod tests {
 
     #[test]
     fn test_prior() {
-        assert!(eq(setup(1).prior(0).exp(), 0.998));
+        assert!(eq(setup(1).prior[0].exp(), 0.998));
         // TODO this causes overflow when calculating combinations for path_prior.
-        //assert!(eq(setup(200).prior(0).exp(), 0.993));
+        //assert!(eq(setup(200).prior[0].exp(), 0.993));
 
         let union = setup(1);
-        assert!(eq(union.prior(1).exp(), union.heterozygosity.exp()));
-        assert!(eq(union.prior(2).exp(), union.heterozygosity.exp() / 2.0));
+        assert!(eq(union.prior[1].exp(), 0.001));
+        assert!(eq(union.prior[2].exp(), 0.001 / 2.0));
     }
 
     #[test]
@@ -188,19 +188,19 @@ mod tests {
         let union = setup(1);
         let likelihoods = ref_likelihoods();
 
-        let (ref_lh, marginal) = union.marginal(&likelihoods);
-        println!("marginal {} {}", ref_lh, marginal);
+        let (ref_lh, marginal) = union.marginal(&likelihoods, &union.prior);
+        println!("marginal {} {}", ref_lh[0], marginal);
     }
 
     #[test]
     fn test_call() {
         let union = setup(1);
         let likelihoods = alt_likelihoods();
-        let (ref_lh, marginal) = union.marginal(&likelihoods);
-        println!("alt marginal {} {}", ref_lh, marginal);
+        let (ref_lh, marginal) = union.marginal(&likelihoods, &union.prior);
+        println!("alt marginal {} {}", ref_lh[0], marginal);
 
         let posterior = union.call(&likelihoods);
 
-        println!("posterior {} {}", posterior, union.prior(0));
+        println!("posterior {} {}", posterior, union.prior[0]);
     }
 }
