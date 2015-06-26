@@ -14,7 +14,7 @@ pub mod union;
 pub use call::diff::Diff;
 pub use call::relaxed_intersection::RelaxedIntersection;
 pub use call::union::Union;
-pub use call::sample_union::SampleUnion;
+pub use call::sample_union::{SampleUnion, DependentSampleUnion};
 
 use LogProb;
 use call::site::{Site, GenotypeLikelihoods};

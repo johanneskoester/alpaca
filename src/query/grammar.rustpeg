@@ -21,23 +21,23 @@ sample_union -> Box<Expr>
                 = s:sample __+ "+" __+ samples:sample ++ (__+ "+" __+) {
                     let mut all = vec![s];
                     all.extend(samples);
-                    Box::new(SampleUnion{ samples: all })
+                    Box::new(Expr::SampleUnion(all))
                 }
 
 single_sample -> Box<Expr>
-                 = s:sample { Box::new(SampleUnion { samples: vec![s] }) }
+                 = s:sample { Box::new(Expr::SampleUnion(vec![s])) }
 
 diff -> Box<Expr>
-        = l:atom __+ "-" __+ r:atom { Box::new(Diff { left: l, right: r }) }
+        = l:atom __+ "-" __+ r:atom { Box::new(Expr::Diff(l, r)) }
 
 union -> Box<Expr>
-         = l:single_sample __+ "+" __+ "(" __* r:compl __* ")" { Box::new(Union { left: l, right: r }) }
-         / "(" __* l:compl __* ")" __+ "+" __+ r:single_sample { Box::new(Union { left: l, right: r }) }
-         / "(" __* l:compl __* ")" __+ "+" __+ "(" __* r:compl __* ")" { Box::new(Union { left: l, right: r }) }
+         = l:single_sample __+ "+" __+ "(" __* r:compl __* ")" { Box::new(Expr::Union(l, r)) }
+         / "(" __* l:compl __* ")" __+ "+" __+ r:single_sample { Box::new(Expr::Union(l, r)) }
+         / "(" __* l:compl __* ")" __+ "+" __+ "(" __* r:compl __* ")" { Box::new(Expr::Union(l, r)) }
 
 relaxed_intersection -> Box<Expr>
                         = children:atom ++ (__+ "x" __+) __+ "with" __+ "k" __* "=" __* k:number {
-                            Box::new(RelaxedIntersection { children: children, k: k })
+                            Box::new(Expr::RelaxedIntersection(children, k ))
                         }
 
 number -> usize

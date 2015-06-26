@@ -208,11 +208,12 @@ pub fn call(
     fdr: Option<LogProb>,
     max_prob: Option<LogProb>,
     heterozygosity: Prob,
+    dependency: bool,
     threads: usize
 ) {
     let mut inbcf = bcf::Reader::new(&"-");
-    let sample_idx = query::sample_index(&inbcf);
-    let (query_caller, samples) = query::parse(query, &sample_idx, heterozygosity);
+    let parser = query::Parser::new(&inbcf.header.samples(), heterozygosity, dependency);
+    let (query_caller, samples) = parser.parse(query);
 
     // create writer
     let mut header = if samples.len() == inbcf.header.sample_count() as usize {

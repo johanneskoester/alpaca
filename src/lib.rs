@@ -4,6 +4,7 @@
 #![feature(vec_push_all)]
 #![feature(drain)]
 #![feature(iter_arith)]
+#![feature(box_patterns)]
 
 
 extern crate itertools;

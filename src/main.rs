@@ -177,6 +177,7 @@ fn call(args: Vec<String>) {
     let mut fdr: OptionalArg<f64> = OptionalArg::None;
     let mut min_qual: OptionalArg<f64> = OptionalArg::None;
     let mut heterozygosity = 0.001;
+    let mut dependency = false;
     let mut threads = 1;
 
     {
@@ -195,6 +196,8 @@ Example: "alpaca call --fdr 0.05 'A - (B + C)' < filtered.bcf > calls.bcf""#
           .add_option(&["--min-qual"], Store, "Minimum variant quality (i.e. PHRED scaled posterior probability for observing the reference genotype given the query).");
         ap.refer(&mut heterozygosity)
           .add_option(&["--het"], Store, "Expected heterozygosity (default 0.001).");
+        ap.refer(&mut dependency)
+          .add_option(&["--dep", "--dependent-samples"], StoreTrue, "Consider samples to be dependent.");
         ap.refer(&mut threads)
           .add_option(&["--threads", "-t"], Store, "Number of threads to use (default 1).");
         parse_args_or_exit(&ap, args);
@@ -207,7 +210,7 @@ Example: "alpaca call --fdr 0.05 'A - (B + C)' < filtered.bcf > calls.bcf""#
 
     let max_prob = min_qual.into_option().map(|q| q * utils::PHRED_TO_LOG_FACTOR);
 
-    cli::call(&query, fdr.into_option().map(|fdr| fdr.ln()), max_prob, heterozygosity, threads);
+    cli::call(&query, fdr.into_option().map(|fdr| fdr.ln()), max_prob, heterozygosity, dependency, threads);
 }
 
 

@@ -132,7 +132,20 @@ impl DependentSampleUnion {
 
 impl Caller for DependentSampleUnion {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
-        let prior = (0..self.union.samples.len()).map(|m| self.population.call_with_prior(m, likelihoods, &self.population.prior)).collect_vec();
+        let prior = (0..self.union.samples.len()).map(|m| {
+            // The prior for m is \sum_{k=m}^{n*\ploidy} k / (n*\ploidy over m) * Pr(M=k|D).
+            // Here, k / (n*\ploidy over m) is the probability to select the right m alleles with k alternative alleles
+            let mut prob = f64::NEG_INFINITY;
+            // number of combinations to select m alleles
+            let choices = (bio::stats::comb((self.population.samples.len() * self.union.ploidy) as u64, m as u64) as f64).ln();
+            for k in m..self.population.samples.len() {
+                // probability to select the right m alleles with k alternative alleles
+                let prior = (k as f64).ln() - choices;
+                // multiply with probability to observe k alternative alleles and add to total probability
+                prob = utils::log_prob_sum(&[prob, prior + self.population.call_with_prior(k, likelihoods, &self.population.prior)]);
+            }
+            prob
+        }).collect_vec();
         self.union.call_with_prior(0, likelihoods, &prior)
     }
 }
