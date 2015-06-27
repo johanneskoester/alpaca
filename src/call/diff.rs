@@ -25,8 +25,9 @@ impl Diff {
 impl Caller for Diff {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
         // 1 - ((1-p_l) * p_r)
-        info!("{} - {}", self.left.call(likelihoods), self.right.call(likelihoods));
-        Diff::diff(self.left.call(likelihoods), self.right.call(likelihoods))
+        let (left, right) = (self.left.call(likelihoods), self.right.call(likelihoods));
+        debug!("{} - {}", left, right);
+        Diff::diff(left, right)
     }
 }
 

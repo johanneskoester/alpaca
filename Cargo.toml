@@ -15,6 +15,7 @@ simple_parallel = "*"
 argparse = "*"
 tempdir = "*"
 log = "*"
+fern = "*"
 bio = ">=0.3.7"
 
 [dependencies.rust-htslib]

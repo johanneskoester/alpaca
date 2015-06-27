@@ -54,7 +54,9 @@ impl SampleUnion {
 
 impl Caller for SampleUnion {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
-        self.call_with_prior(0, likelihoods, &self.prior)
+        let prob = self.call_with_prior(0, likelihoods, &self.prior);
+        debug!("union: {}", prob);
+        prob
     }
 }
 
@@ -116,15 +118,19 @@ impl SampleUnion {
 
 pub struct DependentSampleUnion {
     population: SampleUnion,
-    union: SampleUnion
+    union: SampleUnion,
+    het_sum: f64
 }
 
 
 impl DependentSampleUnion {
     pub fn new(population: Vec<usize>, samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
+        let filtered_population = population.iter().filter(|s| !samples.contains(s)).cloned().collect_vec();
+        let het_sum = (1..filtered_population.len() * ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>().ln();
         DependentSampleUnion {
-            population: SampleUnion::new(population, ploidy, heterozygosity),
-            union: SampleUnion::new(samples, ploidy, heterozygosity)
+            population: SampleUnion::new(filtered_population, ploidy, heterozygosity),
+            union: SampleUnion::new(samples, ploidy, heterozygosity),
+            het_sum: het_sum
         }
     }
 }
@@ -132,21 +138,17 @@ impl DependentSampleUnion {
 
 impl Caller for DependentSampleUnion {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
-        let prior = (0..self.union.samples.len() * self.union.ploidy + 1).map(|m| {
-            // The prior for m is \sum_{k=m}^{n*\ploidy} k / (n*\ploidy over m) * Pr(M=k|D).
-            // Here, k / (n*\ploidy over m) is the probability to select the right m alleles with k alternative alleles
-            let mut prob = f64::NEG_INFINITY;
-            // number of combinations to select m alleles
-            let choices = (bio::stats::comb((self.population.samples.len() * self.union.ploidy) as u64, m as u64) as f64).ln();
-            for k in m..self.population.samples.len() {
-                // probability to select the right m alleles with k alternative alleles
-                let prior = (k as f64).ln() - choices;
-                // multiply with probability to observe k alternative alleles and add to total probability
-                prob = utils::log_prob_sum(&[prob, prior + self.population.call_with_prior(k, likelihoods, &self.population.prior)]);
-            }
+        if self.population.samples.is_empty() {
+            self.union.call(likelihoods)
+        }
+        else {
+            let population_ref = self.population.call(likelihoods);
+            let het = (-population_ref.exp()).ln_1p() - self.het_sum;
+            let prior = SampleUnion::priors(self.union.samples.len(), self.union.ploidy, het.exp());
+            let prob = self.union.call_with_prior(0, likelihoods, &prior);
+            debug!("union: {}", prob);
             prob
-        }).collect_vec();
-        self.union.call_with_prior(0, likelihoods, &prior)
+        }
     }
 }
 

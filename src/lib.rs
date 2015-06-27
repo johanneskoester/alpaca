@@ -14,6 +14,7 @@ extern crate tempdir;
 extern crate bio;
 #[macro_use]
 extern crate log;
+extern crate fern;
 
 pub type Prob = f64;
 pub type LogProb = f64;

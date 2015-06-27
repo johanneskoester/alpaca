@@ -6,6 +6,10 @@ use std::io::{stdout, stderr};
 
 use argparse::{ArgumentParser, Store, List, StoreTrue};
 
+#[macro_use]
+extern crate log;
+extern crate fern;
+
 use alpaca::cli;
 use alpaca::utils;
 
@@ -71,6 +75,17 @@ impl<T: FromStr> FromStr for OptionalArg<T> {
 
 
 fn main() {
+    let logger_config = fern::DispatchConfig {
+        format: Box::new(|msg: &str, _: &log::LogLevel, _: &log::LogLocation| {
+            msg.to_owned()
+        }),
+        output: vec![fern::OutputConfig::stderr()],
+        level: log::LogLevelFilter::Debug,
+    };
+    if let Err(e) = fern::init_global_logger(logger_config, log::LogLevelFilter::Info) {
+        panic!("Failed to initialize global logger: {}", e);
+    }
+
     let mut subcommand = Command::None;
     let mut args = vec![];
     {
@@ -93,7 +108,7 @@ fn main() {
         Command::Filter     => filter(args),
         Command::Call       => call(args),
         Command::None       => {
-            println!("Unknown subcommand.");
+            error!("Unknown subcommand.");
             std::process::exit(1);
         }
     }

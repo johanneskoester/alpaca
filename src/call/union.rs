@@ -11,6 +11,8 @@ pub struct Union {
 
 impl Caller for Union {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
-        self.left.call(likelihoods) + self.right.call(likelihoods)
+        let (left, right) = (self.left.call(likelihoods), self.right.call(likelihoods));
+        debug!("{} - {}", left, right);
+        left + right
     }
 }
