@@ -824,7 +824,7 @@ rule alpaca_call:
     benchmark:
         "benchmarks/alpaca/{dependency}/{filter}/{query}.call.json"
     shell:
-        "alpaca call --threads {threads} {params.dependency}"
+        "alpaca call --threads {threads} {params.dependency} "
         "'{params.query}' {params.filter} < {input} | bcftools view - > '{output}' 2> '{log}'"
 
 
