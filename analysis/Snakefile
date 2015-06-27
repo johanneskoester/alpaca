@@ -227,8 +227,8 @@ rule plot_coverages:
 
 ############################### FPR vs TPR #####################################
 
-fpr_vs_tpr_caller = "alpaca/1 alpaca/0.05 gatk freebayes samtools strelka".split()
-fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) GATK FreeBayes SAMtools Strelka".split()
+fpr_vs_tpr_caller = "alpaca/nodep/1 alpaca/nodep/0.05 alpaca/dep/1 gatk freebayes samtools strelka".split()
+fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) ALPACA(DEP) GATK FreeBayes SAMtools Strelka".split()
 
 def fpr_calls(pattern):
     def apply(wildcards):
@@ -564,7 +564,7 @@ rule performance_alpaca:
         samples=expand("benchmarks/alpaca/{sample}.index.gh.json", sample=performance_samples),
         merge="benchmarks/alpaca/merge.gh.json",
         calls=expand(
-            "benchmarks/alpaca/0.05/{query}.call.json", query=performance_queries
+            "benchmarks/alpaca/nodep/1/{query}.call.json", query=performance_queries
         )
     output:
         "performance/alpaca.json"
@@ -814,17 +814,17 @@ rule alpaca_call:
     input:
         "alpaca/all.bcf"
     output:
-        "alpaca/{filter}/{query,[^\.]+}.vcf"
+        "alpaca/{dependency,(dep|nodep)}/{filter}/{query,[^\.]+}.vcf"
     params:
-        filter=alpaca_filter, query=alpaca_query
+        filter=alpaca_filter, query=alpaca_query, dependency=lambda w: "--dep" if w.dependency == "dep" else ""
     threads: 12
     resources: benchmark=100
     log:
-        "logs/alpaca/{filter}/{query}.call.log"
+        "logs/alpaca/{dependency}/{filter}/{query}.call.log"
     benchmark:
-        "benchmarks/alpaca/{filter}/{query}.call.json"
+        "benchmarks/alpaca/{dependency}/{filter}/{query}.call.json"
     shell:
-        "alpaca call --threads {threads} "
+        "alpaca call --threads {threads} {params.dependency}"
         "'{params.query}' {params.filter} < {input} | bcftools view - > '{output}' 2> '{log}'"
 
 
