@@ -16,7 +16,10 @@ argparse = "*"
 tempdir = "*"
 log = "*"
 fern = "*"
-bio = ">=0.3.7"
+bio = ">=0.3.9"
+
+[dependencies.bio]
+git = "https://github.com/johanneskoester/rust-bio.git"
 
 [dependencies.rust-htslib]
 git = "https://github.com/christopher-schroeder/rust-htslib.git"

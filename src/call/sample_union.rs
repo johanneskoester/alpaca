@@ -21,7 +21,7 @@ impl SampleUnion {
     pub fn new(samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
         let max_allelefreq = (samples.len() * ploidy) as u64;
         let path_prior = (0..max_allelefreq + 1)
-            .map(|m| (bio::stats::comb(max_allelefreq, m) as f64).ln())
+            .map(|m| bio::stats::comb(max_allelefreq, m).ln())
             .collect();
         let prior = Self::priors(samples.len(), ploidy, heterozygosity);
 
@@ -180,8 +180,7 @@ mod tests {
     #[test]
     fn test_prior() {
         assert!(eq(setup(1).prior[0].exp(), 0.998));
-        // TODO this causes overflow when calculating combinations for path_prior.
-        //assert!(eq(setup(200).prior[0].exp(), 0.993));
+        assert!(eq(setup(200).prior[0].exp(), 0.993));
 
         let union = setup(1);
         assert!(eq(union.prior[1].exp(), 0.001));
