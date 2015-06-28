@@ -1,21 +1,28 @@
 use std::f64;
 use std::mem;
 
-use LogProb;
+use {LogProb, Prob};
 
 
-// TODO check
 pub const LOG_TO_PHRED_FACTOR: f64 = -4.3429448190325175; // -10 * 1 / ln(10)
 pub const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e))
 
 
+/// Calcualte the sum of the given probabilities in a numerically stable way.
 pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
-    let p0 = probs.iter().cloned().fold(f64::NEG_INFINITY, |a, b| a.max(b));
-    if p0 == f64::NEG_INFINITY {
+    let mut pmax = probs[0];
+    let mut imax = 0;
+    for (i, &p) in probs[1..].iter().enumerate() {
+        if p > pmax {
+            pmax = p;
+            imax = i;
+        }
+    }
+    if pmax == f64::NEG_INFINITY {
         f64::NEG_INFINITY
     }
     else {
-        p0 + (probs.iter().map(|p| (p - p0).exp()).sum::<LogProb>()).ln()
+        pmax + (probs.iter().enumerate().filter_map(|(i, p)| if i != imax { Some((p - pmax).exp()) } else { None }).sum::<Prob>()).ln_1p()
     }
 }
 
