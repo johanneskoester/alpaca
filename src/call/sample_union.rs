@@ -136,6 +136,7 @@ impl DependentSampleUnion {
         if min_prior > max_prior {
             mem::swap(&mut min_prior, &mut max_prior);
         }
+        debug!("max-prior={}, min-prior={}", max_prior, min_prior);
         DependentSampleUnion {
             population: SampleUnion::new(filtered_population, ploidy, heterozygosity),
             union: union,
