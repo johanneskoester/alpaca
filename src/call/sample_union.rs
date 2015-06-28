@@ -7,7 +7,7 @@ use bio;
 use call::Caller;
 use call::site::GenotypeLikelihoods;
 use utils;
-use {Prob, LogProb, EPSILON};
+use {Prob, LogProb};
 
 
 pub struct SampleUnion {

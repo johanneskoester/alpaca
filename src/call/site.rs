@@ -11,7 +11,9 @@ pub struct Site {
 
 
 impl Site {
-    pub fn new(record: bcf::record::Record) -> Self {
+    pub fn new(mut record: bcf::record::Record) -> Self {
+        // ensure that format data is cached into record (for thread safety)
+        record.format(&b"PL"[..]);
         Site { record: record }
     }
 
