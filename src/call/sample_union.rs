@@ -158,6 +158,7 @@ impl Caller for DependentSampleUnion {
             let het = (-population_ref.exp()).ln_1p() - self.het_sum;
             assert!(het != f64::NAN, format!("Calculated heterozygosity is NaN: pop_ref={}, het_sum={}", population_ref, self.het_sum));
             let prior = SampleUnion::priors(self.union.samples.len(), self.union.ploidy, het.exp());
+            assert!(prior[0] != f64::NAN, format!("Calculated prior is NaN: pop_ref={}, het_sum={}, het={}", population_ref, self.het_sum, het));
             let prob = self.union.call_with_prior(0, likelihoods, &prior);
             debug!("union: {}", prob);
             prob
