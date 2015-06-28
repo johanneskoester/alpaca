@@ -116,33 +116,39 @@ impl SampleUnion {
 }
 
 
+fn het_sum(n: usize, ploidy: usize) -> f64 {
+    (1..n * ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>().ln()
+}
+
+
 pub struct DependentSampleUnion {
     population: SampleUnion,
     union: SampleUnion,
     het_sum: f64,
-    min_prior: f64,
-    max_prior: f64
+    het_min: f64,
+    het_max: f64
 }
 
 
 impl DependentSampleUnion {
     pub fn new(population: Vec<usize>, samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
         let filtered_population = population.iter().filter(|s| !samples.contains(s)).cloned().collect_vec();
-        let het_sum = (1..filtered_population.len() * ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>().ln();
+        let het_sum_population = het_sum(filtered_population.len(), ploidy);
+        let het_sum_union = het_sum(samples.len(), ploidy);
+
         let union = SampleUnion::new(samples, ploidy, heterozygosity);
 
-        let mut min_prior = *union.prior.last().unwrap();
-        let mut max_prior = union.prior[0];
-        if min_prior > max_prior {
-            mem::swap(&mut min_prior, &mut max_prior);
-        }
-        debug!("max-prior={}, min-prior={}", max_prior, min_prior);
+        // minimum heterozygosity should be as given
+        let het_min = heterozygosity.ln();
+        // maximum is het, s.t. 1 - het * sum 1/i = prior[-1] <=> het = (1 - prior[-1]) / sum 1/i
+        let het_max = (-union.prior.last().unwrap().exp()).ln_1p() - het_sum_union;
+        assert!(het_min < het_max, format!("max-het={}, min-het={}", het_max, het_min));
         DependentSampleUnion {
             population: SampleUnion::new(filtered_population, ploidy, heterozygosity),
             union: union,
-            het_sum: het_sum,
-            min_prior: min_prior,
-            max_prior: max_prior
+            het_sum: het_sum_population,
+            het_min: het_min,
+            het_max: het_max
         }
     }
 }
@@ -154,11 +160,11 @@ impl Caller for DependentSampleUnion {
             self.union.call(likelihoods)
         }
         else {
-            let population_ref = self.population.call(likelihoods).min(self.max_prior).max(self.min_prior);
-            let het = (-population_ref.exp()).ln_1p() - self.het_sum;
+            let population_ref = self.population.call(likelihoods);
+            let het = ((-population_ref.exp()).ln_1p() - self.het_sum).min(self.het_max).max(self.het_min);
             assert!(het != f64::NAN, format!("Calculated heterozygosity is NaN: pop_ref={}, het_sum={}", population_ref, self.het_sum));
             let prior = SampleUnion::priors(self.union.samples.len(), self.union.ploidy, het.exp());
-            assert!(prior[0] != f64::NAN, format!("Calculated prior is NaN: pop_ref={}, het_sum={}, het={}", population_ref, self.het_sum, het));
+            debug!("{:?} {}", prior, het);
             let prob = self.union.call_with_prior(0, likelihoods, &prior);
             debug!("union: {}", prob);
             prob
