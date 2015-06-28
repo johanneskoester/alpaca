@@ -82,7 +82,7 @@ fn main() {
         output: vec![fern::OutputConfig::stderr()],
         level: log::LogLevelFilter::Debug,
     };
-    if let Err(e) = fern::init_global_logger(logger_config, log::LogLevelFilter::Info) {
+    if let Err(e) = fern::init_global_logger(logger_config, log::LogLevelFilter::Debug) {
         panic!("Failed to initialize global logger: {}", e);
     }
 

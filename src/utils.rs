@@ -12,7 +12,7 @@ pub const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e
 pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
     let mut pmax = probs[0];
     let mut imax = 0;
-    for (i, &p) in probs[1..].iter().enumerate() {
+    for (i, &p) in probs.iter().enumerate().skip(1) {
         if p > pmax {
             pmax = p;
             imax = i;
@@ -55,4 +55,17 @@ pub fn matrix<T: Copy>(v: T, n: usize, m: usize) -> Vec<Vec<T>> {
     }
 
     matrix
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f64;
+
+    #[test]
+    fn test_log_prob_sum() {
+        let probs = [f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY];
+        assert_eq!(log_prob_sum(&probs), 0.0);
+    }
 }
