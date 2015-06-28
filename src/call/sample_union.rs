@@ -6,7 +6,7 @@ use bio;
 use call::Caller;
 use call::site::GenotypeLikelihoods;
 use utils;
-use {Prob, LogProb};
+use {Prob, LogProb, EPSILON};
 
 
 pub struct SampleUnion {
@@ -107,8 +107,9 @@ impl SampleUnion {
 
             allelefreq_likelihoods[k] = calc_col(&mut z, k);
 
-            marginal = utils::log_prob_sum(&[marginal, allelefreq_likelihoods[k] - self.path_prior[k] + prior[k]]);
-            assert!(marginal <= 0.0, format!("marginal {} > 0, {}, {}", marginal, allelefreq_likelihoods[k], self.path_prior[k]));
+            let _marginal = utils::log_prob_sum(&[marginal, allelefreq_likelihoods[k] - self.path_prior[k] + prior[k]]);
+            assert!(_marginal <= 0.0, format!("marginal {} > 0, {}, {}, {}", marginal, allelefreq_likelihoods[k], self.path_prior[k], prior[k]));
+            marginal = _marginal;
         }
 
         (allelefreq_likelihoods, marginal)
