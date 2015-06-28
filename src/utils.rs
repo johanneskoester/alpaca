@@ -1,4 +1,5 @@
 use std::f64;
+use std::mem;
 
 use LogProb;
 
@@ -19,9 +20,9 @@ pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
 }
 
 
-pub fn log_prob_add(p0: LogProb, p1: LogProb) -> LogProb {
+pub fn log_prob_add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
     if p1 > p0 {
-        (p1, p0) = (p0, p1);
+        mem::swap(&mut p0, &mut p1);
     }
     if p0 == f64::NEG_INFINITY {
         f64::NEG_INFINITY
