@@ -1,4 +1,5 @@
 use std::f64;
+use std::mem;
 
 use itertools::Itertools;
 use bio;
@@ -118,7 +119,9 @@ impl SampleUnion {
 pub struct DependentSampleUnion {
     population: SampleUnion,
     union: SampleUnion,
-    het_sum: f64
+    het_sum: f64,
+    min_prior: f64,
+    max_prior: f64
 }
 
 
@@ -126,10 +129,19 @@ impl DependentSampleUnion {
     pub fn new(population: Vec<usize>, samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
         let filtered_population = population.iter().filter(|s| !samples.contains(s)).cloned().collect_vec();
         let het_sum = (1..filtered_population.len() * ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>().ln();
+        let union = SampleUnion::new(samples, ploidy, heterozygosity);
+
+        let mut min_prior = *union.prior.last().unwrap();
+        let mut max_prior = union.prior[0];
+        if min_prior > max_prior {
+            mem::swap(&mut min_prior, &mut max_prior);
+        }
         DependentSampleUnion {
             population: SampleUnion::new(filtered_population, ploidy, heterozygosity),
-            union: SampleUnion::new(samples, ploidy, heterozygosity),
-            het_sum: het_sum
+            union: union,
+            het_sum: het_sum,
+            min_prior: min_prior,
+            max_prior: max_prior
         }
     }
 }
@@ -141,7 +153,7 @@ impl Caller for DependentSampleUnion {
             self.union.call(likelihoods)
         }
         else {
-            let population_ref = self.population.call(likelihoods);
+            let population_ref = self.population.call(likelihoods).min(self.max_prior).max(self.min_prior);
             let het = (-population_ref.exp()).ln_1p() - self.het_sum;
             let prior = SampleUnion::priors(self.union.samples.len(), self.union.ploidy, het.exp());
             let prob = self.union.call_with_prior(0, likelihoods, &prior);
