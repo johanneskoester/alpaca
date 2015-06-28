@@ -20,12 +20,14 @@ pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
 
 
 pub fn log_prob_add(p0: LogProb, p1: LogProb) -> LogProb {
-    let pmax = p0.max(p1);
-    if pmax == f64::NEG_INFINITY {
+    if p1 > p0 {
+        (p1, p0) = (p0, p1);
+    }
+    if p0 == f64::NEG_INFINITY {
         f64::NEG_INFINITY
     }
     else {
-        pmax + ((p0 - pmax).exp() + (p1 - pmax).exp()).ln()
+        p0 + (p1 - p0).exp().ln_1p()
     }
 }
 
