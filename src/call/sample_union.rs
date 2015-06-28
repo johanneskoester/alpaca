@@ -34,14 +34,12 @@ impl SampleUnion {
     }
 
     fn priors(n: usize, ploidy: usize, heterozygosity: Prob) -> Vec<LogProb> {
-        let mut priors = Vec::with_capacity(n * ploidy + 1);
-        priors.push((-(1..n * ploidy + 1)
-            .map(|i| 1.0 / i as LogProb)
-            .sum::<LogProb>() * heterozygosity)
-            .ln_1p());
-        for m in 1..n * ploidy+1 {
-            priors.push((heterozygosity / m as f64).ln());
+        let mut priors = vec![0.0; n * ploidy + 1];
+        for m in 1..n * ploidy + 1 {
+            priors[m] = (heterozygosity / m as f64).ln();
         }
+        // prior for AF=0 is 1 - the rest
+        priors[0] = (-utils::log_prob_sum(&priors[1..]).exp()).ln_1p();
         priors
     }
 
