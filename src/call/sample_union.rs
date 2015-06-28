@@ -105,7 +105,7 @@ impl SampleUnion {
 
             allelefreq_likelihoods[k] = calc_col(&mut z, k);
 
-            let _marginal = utils::log_prob_sum(&[marginal, allelefreq_likelihoods[k] - self.path_prior[k] + prior[k]]);
+            let _marginal = utils::log_prob_add(marginal, allelefreq_likelihoods[k] - self.path_prior[k] + prior[k]);
             assert!(_marginal <= 0.0, format!("AF={}: marginal {} > 0, prev_marginal={}, AFL={}, PP={}, P={}", k, _marginal, marginal, allelefreq_likelihoods[k], self.path_prior[k], prior[k]));
             marginal = _marginal;
         }
