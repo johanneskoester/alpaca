@@ -240,19 +240,22 @@ def fpr_calls(pattern):
     return apply
 
 
-def extract_depth_qual(calls, output, samples):
+def extract_depth_qual(calls, output, query):
+    call_samples = get_samples_from_query(wildcards.query, call_only=True)
+    filter_samples = get_samples_from_query(wildcards.query, filter_only=True)
     with open(calls) as f, open(output, "w") as out:
-        print("depth", "qual", file=out, sep="\t")
+        print("depth_call", "depth_filter", "qual", file=out, sep="\t")
         for record in vcf.Reader(f):
-            calls = [
-                record.genotype(config["samples"][sample])
-                for sample in samples
-            ]
-            dp = sum(
-                call.data.DP
-                for call in calls
-                if call.data.DP is not None
-            )
+            def dp(samples):
+                calls = [
+                    record.genotype(config["samples"][sample])
+                    for sample in samples
+                ]
+                return sum(
+                    call.data.DP
+                    for call in calls
+                    if call.data.DP is not None
+                )
             if record.QUAL is not None:
                 qual = record.Qual
             else:
@@ -261,7 +264,7 @@ def extract_depth_qual(calls, output, samples):
                     qual = record.INFO["QSS"]
                 elif "QSI" in record.INFO:
                     qual = record.INFO["QSI"]
-            print(dp, qual, file=out, sep="\t")
+            print(dp(call_samples), dp(filter_samples), qual, file=out, sep="\t")
 
 
 rule fpr_fp:
@@ -270,7 +273,7 @@ rule fpr_fp:
     output:
         "fpr/fp/{caller}/{query}.txt"
     run:
-        extract_depth_qual(input[0], output[0], get_samples_from_query(wildcards.query, filter_only=True))
+        extract_depth_qual(input[0], output[0], wildcards.query)
 
 
 def pileup_depths(bams, output, positions=""):
@@ -297,9 +300,12 @@ rule fpr_covered_depths:
         pileup_depths(input.bams, output[0])
 
 
-def rate(positive, negative_depths, label, min_depth=1):
-    positive = positive[positive["depth"] >= min_depth]
-    positive = positive[positive["qual"] >= 1]
+def filter_positives(positives, min_depth_call=1, min_depth_filter=1):
+    return positives[np.logical_and(positives["depth_call"] >= min_depth_call, positives["depth_filter"] >= min_depth_filter, positives["qual"] >= 1)]
+
+
+def rate(positive, negative_depths, label, min_depth_call=1, min_depth_filter=1):
+    positives = filter_positives(positive, min_depth_call=min_depth_call, min_depth_filter=min_depth_filter)
     negative_total = (negative_depths["depth"] >= min_depth).sum()
 
     positive_cum = np.bincount(np.asarray(np.rint(positive["qual"]), dtype=np.int64))[::-1].cumsum()[::-1]
@@ -313,11 +319,11 @@ def rate(positive, negative_depths, label, min_depth=1):
 
 
 def fpr(fp, covered_depths, min_depth=4):
-    return rate(fp, covered_depths, "fpr", min_depth=min_depth)
+    return rate(fp, covered_depths, "fpr", min_depth_filter=min_depth)
 
 
 def tpr(tp, covered_depths, min_depth=4):
-    return rate(tp, covered_depths, "tpr", min_depth=min_depth)
+    return rate(tp, covered_depths, "tpr", min_depth_call=min_depth)
 
 
 rule tpr_gold_variants:
@@ -364,7 +370,7 @@ rule tpr_tp:
     output:
         "tpr/tp/{caller}/{query}.txt"
     run:
-        extract_depth_qual(input[0], output[0], get_samples_from_query(wildcards.query, call_only=True))
+        extract_depth_qual(input[0], output[0], wildcards.query)
 
 
 
@@ -431,7 +437,7 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
         if label == "ALPACA(FDR)":
             continue
         positives = pd.read_table(positives)
-        positives = positives[np.logical_and(positives["depth"] >= 4, positives["qual"] >= 1)]
+        positives = filter_positives(positives)
         sns.kdeplot(positives["qual"].apply(lambda q: 10 ** (-q / 10)), cumulative=True, label=label, legend=False)
     plt.xlim((0,1))
     plt.ylim((0,1))
