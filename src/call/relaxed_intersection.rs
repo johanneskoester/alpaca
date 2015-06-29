@@ -1,5 +1,7 @@
 use std::f64;
 
+use bio::stats::logprobs;
+
 use LogProb;
 use call::Caller;
 use call::site::GenotypeLikelihoods;
@@ -25,11 +27,11 @@ impl Caller for RelaxedIntersection {
             for j in 1..self.children.len() + 1 {
                 let p = prob_ref[j - 1];
                 let p_ref = y[j - 1][k % 2] + p;
-                let p_var = y[j - 1][(k - 1) % 2] + (-p.exp()).ln_1p();
-                y[j][k % 2] = utils::log_prob_sum(&[p_ref, p_var]);
+                let p_var = y[j - 1][(k - 1) % 2] + logprobs::ln_1m_exp(p);
+                y[j][k % 2] = logprobs::log_prob_sum(&[p_ref, p_var]);
             }
             prob.push(y[self.children.len()][k % 2]);
         }
-        utils::log_prob_sum(&prob)
+        logprobs::log_prob_sum(&prob)
     }
 }

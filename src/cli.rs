@@ -10,6 +10,7 @@ use itertools::Itertools;
 use htslib::bcf;
 use simple_parallel;
 use bio;
+use bio::stats::logprobs;
 
 use LogProb;
 use Prob;
@@ -235,7 +236,7 @@ pub fn call(
         header.push_record(
             format!(
                 "##alpaca_min_qual={}",
-                max_prob.unwrap() * utils::LOG_TO_PHRED_FACTOR
+                logprobs::log_to_phred(max_prob.unwrap())
             ).as_bytes()
         );
     }

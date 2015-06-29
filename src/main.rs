@@ -9,6 +9,9 @@ use argparse::{ArgumentParser, Store, List, StoreTrue};
 #[macro_use]
 extern crate log;
 extern crate fern;
+extern crate bio;
+
+use bio::stats::logprobs;
 
 use alpaca::cli;
 use alpaca::utils;
@@ -76,16 +79,17 @@ impl<T: FromStr> FromStr for OptionalArg<T> {
 
 fn main() {
     let logger_config = fern::DispatchConfig {
-        format: Box::new(|msg: &str, _: &log::LogLevel, _: &log::LogLocation| {
-            msg.to_owned()
+        format: Box::new(|msg: &str, level: &log::LogLevel, _: &log::LogLocation| {
+            match level {
+                &log::LogLevel::Debug => format!("DEBUG: {}", msg),
+                _ => msg.to_owned()
+            }
         }),
         output: vec![fern::OutputConfig::stderr()],
         level: log::LogLevelFilter::Debug,
     };
-    if let Err(e) = fern::init_global_logger(logger_config, log::LogLevelFilter::Info) {
-        panic!("Failed to initialize global logger: {}", e);
-    }
 
+    let mut debug = false;
     let mut subcommand = Command::None;
     let mut args = vec![];
     {
@@ -93,12 +97,20 @@ fn main() {
         ap.set_description(
 "ALPACA is a caller for genetic variants from next-generation sequencing data."
         );
+        ap.refer(&mut debug).add_option(&["--debug"], StoreTrue, "Print debugging information.");
         ap.refer(&mut subcommand).required()
             .add_argument("command", Store, "Command to run (preprocess, merge, filter or call)");
         ap.refer(&mut args)
             .add_argument("arguments", List, "Arguments for command");
         ap.stop_on_first_argument(true);
         ap.parse_args_or_exit();
+    }
+
+    if let Err(e) = fern::init_global_logger(
+        logger_config,
+        if debug { log::LogLevelFilter::Debug } else { log::LogLevelFilter::Info }
+    ) {
+        panic!("Failed to initialize global logger: {}", e);
     }
 
     args.insert(0, format!("subcommand {:?}", subcommand));
@@ -223,7 +235,7 @@ Example: "alpaca call --fdr 0.05 'A - (B + C)' < filtered.bcf > calls.bcf""#
     }
 
 
-    let max_prob = min_qual.into_option().map(|q| q * utils::PHRED_TO_LOG_FACTOR);
+    let max_prob = min_qual.into_option().map(logprobs::phred_to_log);
 
     cli::call(&query, fdr.into_option().map(|fdr| fdr.ln()), max_prob, heterozygosity, dependency, threads);
 }

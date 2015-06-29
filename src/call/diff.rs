@@ -1,3 +1,5 @@
+use bio::stats::logprobs;
+
 use call::Caller;
 use call::site::GenotypeLikelihoods;
 use LogProb;
@@ -16,7 +18,13 @@ impl Diff {
             p1
         }
         else {
-            ( -( (-p1.exp()).ln_1p() + p2 ).exp() ).ln_1p()
+            let mut prob = logprobs::ln_1m_exp(p1);
+            debug!("1 - p1 = {}", prob);
+            prob += p2;
+            debug!("(1 - p1) * p2 = {}", prob);
+            prob = logprobs::ln_1m_exp(prob);
+            debug!("1 - ((1 - p1) * p2) = {}", prob);
+            prob
         }
     }
 }
@@ -26,8 +34,9 @@ impl Caller for Diff {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
         // 1 - ((1-p_l) * p_r)
         let (left, right) = (self.left.call(likelihoods), self.right.call(likelihoods));
-        debug!("{} - {}", left, right);
-        Diff::diff(left, right)
+        let prob = Diff::diff(left, right);
+        debug!("{} - {} = {}", left, right, prob);
+        prob
     }
 }
 
@@ -51,26 +60,4 @@ mod tests {
         assert_eq!(Diff::diff(f64::NEG_INFINITY, 0.0), f64::NEG_INFINITY);
         assert!(eq(Diff::diff(f64::NEG_INFINITY, f64::NEG_INFINITY), 0.0));
     }
-/*
-    fn test_chr17_pos335() {
-        let mut sample_idx = HashMap::new();
-        sample_idx.insert("HG00100".to_string(), 0);
-        sample_idx.insert("HG00101".to_string(), 0);
-
-        let caller = parse("HG00100 - HG00101", &sample_idx, 0.001);
-
-        let likelihoods = [
-            GenotypeLikelihoods::new(
-                [14.0,0.0,200.0,38.0,203.0,231.0].iter().map(|p| p * utils::PHRED_TO_LOG_FACTOR).collect(),
-                3,
-            ),
-            GenotypeLikelihoods::new(
-                [0.0,0.0,0.0,27,0.0,222].iter().map(|p| p * utils::PHRED_TO_LOG_FACTOR).collect(),
-                3,
-            ),
-        ];
-
-        caller.call(
-    }
-*/
 }

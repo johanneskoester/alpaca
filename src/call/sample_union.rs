@@ -1,8 +1,9 @@
 use std::f64;
-use std::mem;
 
 use itertools::Itertools;
 use bio;
+use bio::stats::logprobs;
+use bio::stats::combinatorics::combinations;
 
 use call::Caller;
 use call::site::GenotypeLikelihoods;
@@ -22,7 +23,7 @@ impl SampleUnion {
     pub fn new(samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
         let max_allelefreq = (samples.len() * ploidy) as u64;
         let path_prior = (0..max_allelefreq + 1)
-            .map(|m| bio::stats::comb(max_allelefreq, m).ln())
+            .map(|m| combinations(max_allelefreq, m).ln())
             .collect();
         let prior = Self::priors(samples.len(), ploidy, heterozygosity);
 
@@ -40,7 +41,7 @@ impl SampleUnion {
             priors[m] = (heterozygosity / m as f64).ln();
         }
         // prior for AF=0 is 1 - the rest
-        priors[0] = (-utils::log_prob_sum(&priors[1..]).exp()).ln_1p();
+        priors[0] = logprobs::ln_1m_exp(logprobs::log_prob_sum(&priors[1..]));
         priors
     }
 
@@ -64,7 +65,7 @@ impl SampleUnion {
     fn allelefreq_likelihood(sample: usize, m: usize, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
         let lh = likelihoods[sample].with_allelefreq(m);
         let prior = (1.0 / lh.len() as f64).ln();
-        let aflh = utils::log_prob_sum(&lh) + prior;
+        let aflh = logprobs::log_prob_sum(&lh) + prior;
         aflh
     }
 
@@ -84,7 +85,7 @@ impl SampleUnion {
                     let lh = Self::allelefreq_likelihood(self.samples[j - 1], m, likelihoods);
                     p.push(z[j-1][km_idx] + lh);
                 }
-                z[j][k_idx] = utils::log_prob_sum(&p);
+                z[j][k_idx] = logprobs::log_prob_sum(&p);
             }
             z[self.samples.len()][k_idx]
         };
@@ -106,7 +107,7 @@ impl SampleUnion {
 
             allelefreq_likelihoods[k] = calc_col(&mut z, k);
 
-            let _marginal = utils::log_prob_add(marginal, allelefreq_likelihoods[k] - self.path_prior[k] + prior[k]);
+            let _marginal = logprobs::log_prob_add(marginal, allelefreq_likelihoods[k] - self.path_prior[k] + prior[k]);
             assert!(_marginal <= 0.0, format!("AF={}: marginal {} > 0, prev_marginal={}, AFL={}, PP={}, P={}", k, _marginal, marginal, allelefreq_likelihoods[k], self.path_prior[k], prior[k]));
             marginal = _marginal;
         }
@@ -141,7 +142,7 @@ impl DependentSampleUnion {
         // minimum heterozygosity should be as given
         let het_min = heterozygosity.ln();
         // maximum is het, s.t. 1 - het * sum 1/i = prior[-1] <=> het = (1 - prior[-1]) / sum 1/i
-        let het_max = (-union.prior.last().unwrap().exp()).ln_1p() - het_sum_union;
+        let het_max = logprobs::ln_1m_exp(*union.prior.last().unwrap()) - het_sum_union;
         assert!(het_min < het_max, format!("max-het={}, min-het={}", het_max, het_min));
         DependentSampleUnion {
             population: SampleUnion::new(filtered_population, ploidy, heterozygosity),
@@ -161,7 +162,7 @@ impl Caller for DependentSampleUnion {
         }
         else {
             let population_ref = self.population.call(likelihoods);
-            let het = ((-population_ref.exp()).ln_1p() - self.het_sum).min(self.het_max).max(self.het_min);
+            let het = (logprobs::ln_1m_exp(population_ref) - self.het_sum).min(self.het_max).max(self.het_min);
             assert!(het != f64::NAN, format!("Calculated heterozygosity is NaN: pop_ref={}, het_sum={}", population_ref, self.het_sum));
             let prior = SampleUnion::priors(self.union.samples.len(), self.union.ploidy, het.exp());
             debug!("{:?} {}", prior, het);
@@ -175,11 +176,14 @@ impl Caller for DependentSampleUnion {
 
 #[cfg(test)]
 mod tests {
+    use bio::stats::logprobs;
+
     use super::*;
     use call::Caller;
     use utils;
     use LogProb;
     use call::site::GenotypeLikelihoods;
+
 
     fn setup(n: usize) -> SampleUnion {
         assert!(n > 0);
@@ -191,7 +195,7 @@ mod tests {
     }
 
     fn alt_likelihoods() -> Vec<GenotypeLikelihoods> {
-        vec![ GenotypeLikelihoods::new(vec![Some(167.0 * utils::PHRED_TO_LOG_FACTOR), Some(0.0), Some(96.0 * utils::PHRED_TO_LOG_FACTOR)], 2) ]
+        vec![ GenotypeLikelihoods::new(vec![Some(logprobs::phred_to_log(167.0)), Some(0.0), Some(logprobs::phred_to_log(96.0))], 2) ]
     }
 
     fn eq(a: LogProb, b: LogProb) -> bool {

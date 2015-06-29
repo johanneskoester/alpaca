@@ -1,5 +1,6 @@
 use htslib::bcf;
 use itertools::Itertools;
+use bio::stats::logprobs;
 
 use utils;
 use LogProb;
@@ -27,7 +28,7 @@ impl Site {
                     None
                 }
                 else {
-                    Some(s as LogProb * utils::PHRED_TO_LOG_FACTOR)
+                    Some(logprobs::phred_to_log(s as LogProb))
                 }
             }).collect();
 
@@ -36,7 +37,7 @@ impl Site {
     }
 
     pub fn set_qual(&mut self, prob: LogProb) {
-        let qual = prob * utils::LOG_TO_PHRED_FACTOR;
+        let qual = logprobs::log_to_phred(prob);
         self.record.set_qual(qual as f32);
     }
 

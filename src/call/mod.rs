@@ -6,6 +6,7 @@ use std::sync::mpsc;
 use simple_parallel;
 use htslib::bcf;
 use itertools::Itertools;
+use bio::stats::logprobs;
 
 pub mod site;
 pub mod diff;
@@ -98,7 +99,7 @@ fn control_fdr(candidates: &mut Vec<(Site, LogProb)>, fdr: LogProb) {
     let cmp = |a: &LogProb, b: &LogProb| a.partial_cmp(b).expect("Bug: NaN probability found.");
     let mut probs = candidates.iter().map(|&(_, prob)| prob).collect_vec();
     probs.sort_by(&cmp);
-    let exp_fdr = utils::log_prob_cumsum(&probs);
+    let exp_fdr = logprobs::log_prob_cumsum(&probs);
     let max_prob = match exp_fdr.binary_search_by(|probe| cmp(&probe, &fdr)) {
         Ok(i)           => probs[i],
         Err(i) if i > 0 => probs[i-1],
