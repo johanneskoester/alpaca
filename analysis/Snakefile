@@ -241,8 +241,8 @@ def fpr_calls(pattern):
 
 
 def extract_depth_qual(calls, output, query):
-    call_samples = get_samples_from_query(wildcards.query, call_only=True)
-    filter_samples = get_samples_from_query(wildcards.query, filter_only=True)
+    call_samples = get_samples_from_query(query, call_only=True)
+    filter_samples = get_samples_from_query(query, filter_only=True)
     with open(calls) as f, open(output, "w") as out:
         print("depth_call", "depth_filter", "qual", file=out, sep="\t")
         for record in vcf.Reader(f):
@@ -257,7 +257,7 @@ def extract_depth_qual(calls, output, query):
                     if call.data.DP is not None
                 )
             if record.QUAL is not None:
-                qual = record.Qual
+                qual = record.QUAL
             else:
                 qual = 0
                 if "QSS" in record.INFO:
@@ -304,9 +304,9 @@ def filter_positives(positives, min_depth_call=1, min_depth_filter=1):
     return positives[np.logical_and(positives["depth_call"] >= min_depth_call, positives["depth_filter"] >= min_depth_filter, positives["qual"] >= 1)]
 
 
-def rate(positive, negative_depths, label, min_depth_call=1, min_depth_filter=1):
+def rate(positive, negative_depths, label, min_depth_call=1, min_depth_filter=1, min_depth_negative=1):
     positives = filter_positives(positive, min_depth_call=min_depth_call, min_depth_filter=min_depth_filter)
-    negative_total = (negative_depths["depth"] >= min_depth).sum()
+    negative_total = (negative_depths["depth"] >= min_depth_negative).sum()
 
     positive_cum = np.bincount(np.asarray(np.rint(positive["qual"]), dtype=np.int64))[::-1].cumsum()[::-1]
     negative_cum = negative_total - positive_cum
@@ -319,11 +319,11 @@ def rate(positive, negative_depths, label, min_depth_call=1, min_depth_filter=1)
 
 
 def fpr(fp, covered_depths, min_depth=4):
-    return rate(fp, covered_depths, "fpr", min_depth_filter=min_depth)
+    return rate(fp, covered_depths, "fpr", min_depth_filter=min_depth, min_depth_negative=min_depth)
 
 
 def tpr(tp, covered_depths, min_depth=4):
-    return rate(tp, covered_depths, "tpr", min_depth_call=min_depth)
+    return rate(tp, covered_depths, "tpr", min_depth_call=min_depth, min_depth_negative=min_depth)
 
 
 rule tpr_gold_variants:
@@ -407,9 +407,12 @@ rule fpr_vs_tpr:
         plt.figure(figsize=(2.8, 2.5), dpi=90)
         last_line = None
         for tp, fp, label in zip(input.tp, input.fp, fpr_vs_tpr_labels):
+            print(label)
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
+            print("fpr")
             _fpr, fpr_small = fpr(fp, tn_cov, depth)
+            print("tpr")
             _tpr, tpr_small = tpr(tp, fn_cov, depth)
             d = pd.merge(_fpr, _tpr)
             if label == "ALPACA(FDR)":
