@@ -415,9 +415,9 @@ rule plot_fpr_vs_tpr:
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
             print("fpr")
-            _fpr = fpr(fp, tn_cov, depth, depth_samples=get_samples_from_query(wildcards.query, filter_only=True))
+            _fpr = fpr(fp, tn_cov, depth, depth_samples=get_samples_from_query(wildcards.query_fpr, filter_only=True))
             print("tpr")
-            _tpr = tpr(tp, fn_cov, depth, depth_samples=get_samples_from_query(wildcards.query, call_only=True))
+            _tpr = tpr(tp, fn_cov, depth, depth_samples=get_samples_from_query(wildcards.query_tpr, call_only=True))
             d = pd.merge(_fpr, _tpr)
             if label == "ALPACA(FDR)":
                 plt.semilogx(d["fpr"][0], d["tpr"][0], "x", color=last_line.get_color(), mew=2)
