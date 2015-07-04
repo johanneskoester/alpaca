@@ -376,7 +376,7 @@ def filter_negatives(negatives, min_depth=4, depth_samples=None):
 
 def rate(positives, negative_depths, label, min_depth=4, depth_samples=None):
     positives = filter_positives(positives, min_depth=min_depth, depth_samples=depth_samples)
-    negative_total = filter_negatives(negative_depths, min_depth=min_depth, depth_samples=depth_samples).sum()
+    negative_total = filter_negatives(negative_depths, min_depth=min_depth, depth_samples=depth_samples).shape[0]
 
     positive_cum = np.bincount(np.asarray(np.rint(positives["qual"]), dtype=np.int64))[::-1].cumsum()[::-1]
     negative_cum = negative_total - positive_cum
