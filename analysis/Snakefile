@@ -287,7 +287,7 @@ rule fpr_fp:
 
 rule fpr_covered_depths:
     input:
-        bams=get_bams(filter_only=True)
+        bams=get_bams()
     output:
         "fpr/tn/covered_depths/{query}.txt"
     resources: benchmark=1
