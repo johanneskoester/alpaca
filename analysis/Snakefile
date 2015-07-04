@@ -149,20 +149,6 @@ target_fpr_vs_tpr =  expand(expand(
     layout=["y", "l", "xy", "x"]
 ), depth=[4, 20])
 
-target_fpr_vs_qual = expand(
-    "plots/fpr_vs_qual/{query}.{layout}.pdf",
-    zip,
-    query=config["fpr"]["queries"],
-    layout=["y", "n", "lxy", "x"]
-)
-
-target_tpr_vs_qual = expand(
-    "plots/tpr_vs_qual/{query}.{layout}.pdf",
-    zip,
-    query=config["tpr"]["queries"],
-    layout=["y", "n", "lxy", "x"]
-)
-
 
 ########################### Target rules #######################################
 
@@ -170,8 +156,6 @@ target_tpr_vs_qual = expand(
 rule all:
     input:
         target_fpr_vs_tpr,
-        target_fpr_vs_qual,
-        target_tpr_vs_qual,
         expand(
             "data/reads/{sample}.readcount.txt",
             sample="NA12878 NA12892".split()
@@ -244,7 +228,7 @@ def extract_depth_qual(calls, output, query):
     call_samples = get_samples_from_query(query, call_only=True)
     filter_samples = get_samples_from_query(query, filter_only=True)
     with open(calls) as f, open(output, "w") as out:
-        print("depth_call", "depth_filter", "qual", file=out, sep="\t")
+        print("chrom", "pos", "depth_call", "depth_filter", "qual", file=out, sep="\t")
         for record in vcf.Reader(f):
             def dp(samples):
                 calls = [
@@ -264,66 +248,53 @@ def extract_depth_qual(calls, output, query):
                     qual = record.INFO["QSS"]
                 elif "QSI" in record.INFO:
                     qual = record.INFO["QSI"]
-            print(dp(call_samples), dp(filter_samples), qual, file=out, sep="\t")
+            print(record.CHROM, record.POS, dp(call_samples), dp(filter_samples), qual, file=out, sep="\t")
+
+
+def get_bams(filter_only=False, call_only=False):
+    _get_bams = lambda wildcards: expand(
+        "data/reads/{sample}.bam",
+        sample=[
+            config["samples"][sample]
+            for sample in get_samples_from_query(wildcards.query, filter_only=filter_only, call_only=call_only)
+        ]
+    )
+    return _get_bams
+
+
+def pileup_depths_cmd(bams, positions=""):
+    if positions:
+        positions = "--positions '{}'".format(positions)
+    return (
+        r"samtools mpileup -B -q0 -Q0 {positions} {bams} | "
+        r"awk -F '\t' "
+        r"'{{depth=0}} {{for (i=4; i<=NF; i+=3) depth+=$i}} "
+        r"{{print depth}}' "
+    ).format(positions=positions, bams=bams)
 
 
 rule fpr_fp:
     input:
-        "{caller}/{query}.vcf"
+        bams=get_bams(filter_only=True),
+        vcf="{caller}/{query}.vcf"
     output:
         "fpr/fp/{caller}/{query}.txt"
     run:
-        extract_depth_qual(input[0], output[0], wildcards.query)
-
-
-def pileup_depths(bams, output, positions=""):
-    if positions:
-        positions = "--positions " + positions
-    shell(r"echo depth > '{output}'; "
-    "samtools mpileup -q0 -Q0 {positions} {bams} | "
-    r"awk -F '\t' '{{depth=0}} {{for (i=4; i<=NF; i+=3) depth+=$i}} {{print depth}}' >> '{output}'")
+        depths = pileup_depths_cmd(input.bams, input.vcf)
+        shell(r"echo -e 'qual\tdepth' > '{output}'")
+        shell("paste <(grep -v '^#' '{input.vcf}' | cut -f6) <({depths}) >> '{output}'")
 
 
 rule fpr_covered_depths:
     input:
-        bams=lambda wildcards: expand(
-            "data/reads/{sample}.bam",
-            sample=[
-                config["samples"][sample]
-                for sample in get_samples_from_query(wildcards.query, filter_only=True)
-            ]
-        )
+        bams=get_bams(filter_only=True)
     output:
         "fpr/tn/covered_depths/{query}.txt"
     resources: benchmark=1
     run:
-        pileup_depths(input.bams, output[0])
-
-
-def filter_positives(positives, min_depth_call=1, min_depth_filter=1):
-    return positives[np.logical_and(positives["depth_call"] >= min_depth_call, positives["depth_filter"] >= min_depth_filter, positives["qual"] >= 1)]
-
-
-def rate(positive, negative_depths, label, min_depth_call=1, min_depth_filter=1, min_depth_negative=1):
-    positives = filter_positives(positive, min_depth_call=min_depth_call, min_depth_filter=min_depth_filter)
-    negative_total = (negative_depths["depth"] >= min_depth_negative).sum()
-
-    positive_cum = np.bincount(np.asarray(np.rint(positive["qual"]), dtype=np.int64))[::-1].cumsum()[::-1]
-    negative_cum = negative_total - positive_cum
-
-    total_cum = positive_cum + negative_cum
-    rate_cum = positive_cum / total_cum
-
-    first_small = np.argmax(positive_cum < 20)
-    return pd.DataFrame({"qual": np.arange(len(rate_cum)), label: rate_cum}), first_small
-
-
-def fpr(fp, covered_depths, min_depth=4):
-    return rate(fp, covered_depths, "fpr", min_depth_filter=min_depth, min_depth_negative=min_depth)
-
-
-def tpr(tp, covered_depths, min_depth=4):
-    return rate(tp, covered_depths, "tpr", min_depth_call=min_depth, min_depth_negative=min_depth)
+        depths = pileup_depths_cmd(input.bams)
+        shell(r"echo -e 'depth' > '{output}'")
+        shell("{depths} >> '{output}'")
 
 
 rule tpr_gold_variants:
@@ -361,37 +332,62 @@ rule tpr_tp_calls:
         "tpr/tp/{caller}/{query}.vcf"
     resources: benchmark=1
     shell:
-        "bedtools intersect -header -a '{input.vcf}' -b {input.gold} > '{output}'"
+        "bedtools intersect -wa -header -a '{input.vcf}' -b {input.gold} > '{output}'"
 
 
 rule tpr_tp:
     input:
-        "tpr/tp/{caller}/{query}.vcf"
+        bams=get_bams(call_only=True),
+        vcf="tpr/tp/{caller}/{query}.vcf"
     output:
         "tpr/tp/{caller}/{query}.txt"
     run:
-        extract_depth_qual(input[0], output[0], wildcards.query)
-
+        depths = pileup_depths_cmd(input.bams, input.vcf)
+        shell(r"echo -e 'qual\tdepth' > '{output}'")
+        shell("paste <(grep -v '^#' '{input.vcf}' | cut -f6) <({depths}) >> '{output}'")
 
 
 rule tpr_covered_depths:
     input:
-        bams=lambda wildcards: expand(
-            "data/reads/{sample}.bam",
-            sample=[
-                config["samples"][sample]
-                for sample in get_samples_from_query(wildcards.query, call_only=True)
-            ]
-        ),
-        gold="tpr/exclusive_gold_variants.vcf"
+        bams=get_bams(call_only=True),
+        vcf="tpr/exclusive_gold_variants.vcf"
     output:
         "tpr/fn/covered_depths/{query}.txt"
     resources: benchmark=1
     run:
-        pileup_depths(input.bams, output[0], positions=input.gold)
+        depths = pileup_depths_cmd(input.bams, input.vcf)
+        shell(r"echo -e 'depth' > '{output}'")
+        shell("{depths} >> '{output}'")
 
 
-rule fpr_vs_tpr:
+def filter_positives(positives, min_depth=4):
+    positives = positives[positives["depth"] >= min_depth]
+    positives = positives[positives["qual"] >= 1]
+    return positives
+
+
+def rate(positives, negative_depths, label, min_depth=4):
+    positives = filter_positives(positives, min_depth=min_depth)
+    negative_total = (negative_depths["depth"] >= min_depth).sum()
+
+    positive_cum = np.bincount(np.asarray(np.rint(positives["qual"]), dtype=np.int64))[::-1].cumsum()[::-1]
+    negative_cum = negative_total - positive_cum
+
+    total_cum = positive_cum + negative_cum
+    rate_cum = positive_cum / total_cum
+
+    return pd.DataFrame({"qual": np.arange(len(rate_cum)), label: rate_cum})
+
+
+def fpr(fp, covered_depths, min_depth=4):
+    return rate(fp, covered_depths, "fpr", min_depth=min_depth)
+
+
+def tpr(tp, covered_depths, min_depth=4):
+    return rate(tp, covered_depths, "tpr", min_depth=min_depth)
+
+
+rule plot_fpr_vs_tpr:
     input:
         tp=lambda wildcards: expand("tpr/tp/{caller}/{query}.txt", query=wildcards.query_tpr, caller=fpr_vs_tpr_caller if wildcards.query_tpr == "A0-B0" else fpr_vs_tpr_caller[:-1]),
         fp=lambda wildcards: expand("fpr/fp/{caller}/{query}.txt", query=wildcards.query_fpr, caller=fpr_vs_tpr_caller if wildcards.query_fpr == "A0-A1" else fpr_vs_tpr_caller[:-1]),
@@ -411,16 +407,16 @@ rule fpr_vs_tpr:
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
             print("fpr")
-            _fpr, fpr_small = fpr(fp, tn_cov, depth)
+            _fpr = fpr(fp, tn_cov, depth)
             print("tpr")
-            _tpr, tpr_small = tpr(tp, fn_cov, depth)
+            _tpr = tpr(tp, fn_cov, depth)
             d = pd.merge(_fpr, _tpr)
             if label == "ALPACA(FDR)":
                 plt.semilogx(d["fpr"][0], d["tpr"][0], "x", color=last_line.get_color(), mew=2)
             else:
                 last_line, = plt.semilogx(d["fpr"], d["tpr"], label=label)
-        plt.ylim((0,1))
-        plt.xlim((1e-8, 1e-4))
+        #plt.ylim((0,1))
+        #plt.xlim((1e-8, 1e-4))
         if "x" in wildcards.layout:
             plt.xlabel("FPR")
         if "y" in wildcards.layout:
@@ -434,13 +430,13 @@ rule fpr_vs_tpr:
         savefig(output[0], bbox_inches="tight")
 
 
-def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
+def plot_rate_vs_qual(positives_files, out_file, layout="lxy", min_depth_call=0, min_depth_filter=0):
     plt.figure(figsize=(2.8, 2.5), dpi=90)
     for positives, label in zip(positives_files, fpr_vs_tpr_labels):
         if label == "ALPACA(FDR)":
             continue
         positives = pd.read_table(positives)
-        positives = filter_positives(positives)
+        positives = filter_positives(positives, min_depth_call=min_depth_call, min_depth_filter=min_depth_filter)
         sns.kdeplot(positives["qual"].apply(lambda q: 10 ** (-q / 10)), cumulative=True, label=label, legend=False)
     plt.xlim((0,1))
     plt.ylim((0,1))
@@ -455,50 +451,50 @@ def plot_rate_vs_qual(positives_files, out_file, layout="lxy"):
     savefig(out_file, bbox_inches="tight")
 
 
-rule fpr_vs_qual:
+rule plot_fpr_vs_qual:
     input:
         fp=lambda wildcards: expand("fpr/fp/{caller}/{query}.txt", query=wildcards.query, caller=fpr_vs_tpr_caller if wildcards.query == "A0-A1" else fpr_vs_tpr_caller[:-1]),
     output:
         "plots/fpr_vs_qual/{query}.{layout,[lxyn]+}.pdf"
     run:
-        plot_rate_vs_qual(input.fp, output[0], wildcards.layout)
+        plot_rate_vs_qual(input.fp, output[0], wildcards.layout, min_depth_filter=4)
 
 
-rule tpr_vs_qual:
+rule plot_tpr_vs_qual:
     input:
         tp=lambda wildcards: expand("tpr/tp/{caller}/{query}.txt", query=wildcards.query, caller=fpr_vs_tpr_caller if wildcards.query == "A0-B0" else fpr_vs_tpr_caller[:-1])
     output:
         "plots/tpr_vs_qual/{query}.{layout,[lxyn]+}.pdf"
     run:
-        plot_rate_vs_qual(input.tp, output[0], wildcards.layout)
+        plot_rate_vs_qual(input.tp, output[0], wildcards.layout, min_depth_call=4)
 
 
 ############################### estimate FDR ###################################
 
 
-rule plot_fdr_correlation:
+rule plot_fp_vs_tp_probs:
     input:
-        tp="tpr/tp/alpaca/1/{query_tpr}.txt",
-        fp="fpr/fp/alpaca/1/{query_fpr}.txt"
+        tp="tpr/tp/alpaca/nodep/1/{query_tpr}.txt",
+        fp="fpr/fp/alpaca/nodep/1/{query_fpr}.txt"
     output:
-        "plots/fdr/{query_fpr}.{query_tpr}.pdf"
+        "plots/fp_tp_dist/{query_fpr}.{query_tpr}.pdf"
     run:
         import random
         qual_to_prob = lambda qual: 10 ** (-qual / 10)
 
         tp = pd.read_table(input.tp)
-        #fp = tp[tp["depth"] >= 4]
+        tp = tp[tp["depth"] >= 0]
         tp["fp"] = False
         tp["prob"] = tp["qual"].apply(qual_to_prob)
 
         fp = pd.read_table(input.fp)
-        #fp = fp[fp["depth"] >= 4]
+        fp = fp[fp["depth"] >= 0]
         fp["prob"] = fp["qual"].apply(qual_to_prob)
         fp["fp"] = True
 
         plt.figure(figsize=(3.86, 2.4), dpi=90)
-        sns.kdeplot(fp["prob"], label="FP", legend=False)
-        sns.kdeplot(tp["prob"], label="TP", legend=False)
+        sns.kdeplot(fp["prob"], label="FP", legend=False, cumulative=True, bw="silverman")
+        sns.kdeplot(tp["prob"], label="TP", legend=False, cumulative=True)
 
         """
         p = pd.concat([tp, fp])
@@ -515,31 +511,53 @@ rule plot_fdr_correlation:
         plt.xlim((0,1))
         plt.xlabel("posterior probability")
         plt.ylabel("density")
-
-        """
-        for total_fdr in [0.05, 0.10, 0.25]:
-            d = []
-            for _ in range(100):
-                sample = pd.concat([
-                    tp.ix[np.random.choice(tp.index, int(100 * (1-total_fdr) / total_fdr))],
-                    fp.ix[np.random.choice(fp.index, 100)]
-                ])
-                sample.sort("prob", inplace=True)
-                sample = sample.reset_index(drop=True)
-                exp_fdr = sample["prob"].cumsum() / sample.shape[0]
-                i = np.searchsorted(exp_fdr, 0.05, side="right")
-                print(i, exp_fdr[i], exp_fdr)
-                true_fdr = sample.iloc[:i]["fp"].sum() / i
-                #exp_fdr = sample["prob"].sum() / sample.shape[0]
-                #true_fdr = sample["fp"].sum() / sample.shape[0]
-                d.append(true_fdr)
-            sns.kdeplot(np.asarray(d), cumulative=True, label="total FDR={}".format(true_fdr))
-        #plt.xlim((0.15, 0.25))
-        plt.xlabel("true FDR after control")
-        plt.ylabel("CDF")
-        """
         sns.despine()
         savefig(output[0], bbox_inches="tight")
+
+
+
+rule plot_fdr:
+    input:
+        tp="tpr/tp/alpaca/nodep/1/{query_tpr}.txt",
+        fp="fpr/fp/alpaca/nodep/1/{query_fpr}.txt"
+    output:
+        "plots/fdr/{query_fpr}.{query_tpr}.pdf"
+    run:
+        import random
+        qual_to_prob = lambda qual: 10 ** (-qual / 10)
+
+        tp = pd.read_table(input.tp)
+        tp = tp[tp["depth"] >= 50]
+        tp["fp"] = False
+        tp["prob"] = tp["qual"].apply(qual_to_prob)
+
+        fp = pd.read_table(input.fp)
+        fp = fp[fp["depth"] >= 50]
+        fp["prob"] = fp["qual"].apply(qual_to_prob)
+        fp["fp"] = True
+        print(fp.shape, tp.shape)
+
+
+        plt.figure(figsize=(3.86, 2.4), dpi=90)        
+        for total_fdr in [0.0001, 0.001, 0.01, 0.05, 0.10, 0.25]:
+            d = []
+            for _ in range(100):
+                tp_sample = 100
+                fp_sample = int(tp_sample * total_fdr / (1 - total_fdr))
+                sample = pd.concat([
+                    tp.ix[np.random.choice(tp.index, tp_sample, replace=False)],
+                    fp.ix[np.random.choice(fp.index, fp_sample, replace=False)]
+                ])
+                exp_fdr = sample["prob"].sum() / sample.shape[0]
+                d.append(exp_fdr)
+            sns.kdeplot(np.asarray(d), cumulative=True, label="true FDR={}".format(total_fdr))
+        #plt.xlim((0.15, 0.25))
+        plt.xlabel("expected FDR")
+        plt.ylabel("CDF")
+        sns.despine()
+        plt.savefig(output[0], bbox_inches="tight")
+        
+
 
 ############################### run time performance ###########################
 
@@ -997,7 +1015,7 @@ rule strelka_merge:
         "strelka/{query,(A0-A1|A0-B0)}/results/all.somatic.snvs.vcf",
         "strelka/{query,(A0-A1|A0-B0)}/results/all.somatic.indels.vcf"
     output:
-        "strelka/{query,(A0-A1|A0-B0)}.vcf"
+        "strelka/{query,(A0-A1|A0-B0)}.merged.vcf"
     params:
         normal=lambda wildcards: config["samples"]["A1" if wildcards.query == "A0-A1" else "B0"],
         tumor=lambda wildcards: config["samples"]["A0"]
@@ -1005,6 +1023,25 @@ rule strelka_merge:
         "for f in {input}; do bgzip -c $f > $f.gz; tabix -p vcf $f.gz; done; "
         "bcftools concat -a -Ov {input[0]}.gz {input[1]}.gz | "
         "sed 's/TUMOR/{params.tumor}/' | sed 's/NORMAL/{params.normal}/' > {output}"
+
+
+rule strelka_qual:
+    input:
+        "strelka/{query}.merged.vcf"
+    output:
+        "strelka/{query,(A0-A1|A0-B0)}.vcf"
+    run:
+        with open(input[0]) as f, open(output[0], "w") as out:
+            reader = vcf.Reader(f)
+            writer = vcf.Writer(out, template=reader)
+            for record in reader:
+                if "QSI" in record.INFO:
+                    record.QUAL = record.INFO["QSI"]
+                elif "QSS" in record.INFO:
+                    record.QUAL = record.INFO["QSS"]
+                else:
+                    record.QUAL = 0
+                writer.write_record(record)
 
 
 #################################### Samtools ##################################
