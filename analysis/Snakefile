@@ -268,7 +268,7 @@ def pileup_depths_cmd(bams, positions=""):
     cols = [str(4 + k * 3) for k in range(len(bams))]
     return (
         r"samtools mpileup -B -q0 -Q0 {positions} {bams} | "
-        r"cut -f{}"
+        r"cut -f{cols}"
     ).format(positions=positions, bams=bams, cols=",".join(cols))
 
 
