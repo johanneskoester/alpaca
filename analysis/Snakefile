@@ -265,7 +265,7 @@ def get_bams(filter_only=False, call_only=False):
 def pileup_depths_cmd(bams, positions=""):
     if positions:
         positions = "--positions '{}'".format(positions)
-    cols = [4 + k * 3 for k in range(len(bams))]
+    cols = [str(4 + k * 3) for k in range(len(bams))]
     return (
         r"samtools mpileup -B -q0 -Q0 {positions} {bams} | "
         r"cut -f{}"
