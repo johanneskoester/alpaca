@@ -265,23 +265,23 @@ def get_bams(filter_only=False, call_only=False):
 def pileup_depths_cmd(bams, positions=""):
     if positions:
         positions = "--positions '{}'".format(positions)
+    cols = [4 + k * 3 for k in range(len(bams))]
     return (
         r"samtools mpileup -B -q0 -Q0 {positions} {bams} | "
-        r"awk -F '\t' "
-        r"'{{depth=0}} {{for (i=4; i<=NF; i+=3) depth+=$i}} "
-        r"{{print depth}}' "
-    ).format(positions=positions, bams=bams)
+        r"cut -f{}"
+    ).format(positions=positions, bams=bams, cols=",".join(cols))
 
 
 rule fpr_fp:
     input:
-        bams=get_bams(filter_only=True),
+        bams=get_bams(),
         vcf="{caller}/{query}.vcf"
     output:
         "fpr/fp/{caller}/{query}.txt"
     run:
         depths = pileup_depths_cmd(input.bams, input.vcf)
-        shell(r"echo -e 'qual\tdepth' > '{output}'")
+        cols = r"\t".join(expand_samples_from_query(wildcards.query))
+        shell(r"echo -e 'qual\t{cols}' > '{output}'")
         shell("paste <(grep -v '^#' '{input.vcf}' | cut -f6) <({depths}) >> '{output}'")
 
 
@@ -293,7 +293,8 @@ rule fpr_covered_depths:
     resources: benchmark=1
     run:
         depths = pileup_depths_cmd(input.bams)
-        shell(r"echo -e 'depth' > '{output}'")
+        cols = r"\t".join(expand_samples_from_query(wildcards.query))
+        shell(r"echo -e '{cols}' > '{output}'")
         shell("{depths} >> '{output}'")
 
 
@@ -337,38 +338,45 @@ rule tpr_tp_calls:
 
 rule tpr_tp:
     input:
-        bams=get_bams(call_only=True),
+        bams=get_bams(),
         vcf="tpr/tp/{caller}/{query}.vcf"
     output:
         "tpr/tp/{caller}/{query}.txt"
     run:
         depths = pileup_depths_cmd(input.bams, input.vcf)
-        shell(r"echo -e 'qual\tdepth' > '{output}'")
+        cols = r"\t".join(expand_samples_from_query(wildcards.query))
+        shell(r"echo -e 'qual\t{cols}' > '{output}'")
         shell("paste <(grep -v '^#' '{input.vcf}' | cut -f6) <({depths}) >> '{output}'")
 
 
 rule tpr_covered_depths:
     input:
-        bams=get_bams(call_only=True),
+        bams=get_bams(),
         vcf="tpr/exclusive_gold_variants.vcf"
     output:
         "tpr/fn/covered_depths/{query}.txt"
     resources: benchmark=1
     run:
         depths = pileup_depths_cmd(input.bams, input.vcf)
-        shell(r"echo -e 'depth' > '{output}'")
+        cols = r"\t".join(expand_samples_from_query(wildcards.query))
+        shell(r"echo -e '{cols}' > '{output}'")
         shell("{depths} >> '{output}'")
 
 
-def filter_positives(positives, min_depth=4):
-    positives = positives[positives["depth"] >= min_depth]
+def filter_positives(positives, min_depth=4, depth_samples=None):
+    positives = positives[positives[depth_samples].sum(axis=1) >= min_depth]
     positives = positives[positives["qual"] >= 1]
     return positives
 
 
-def rate(positives, negative_depths, label, min_depth=4):
-    positives = filter_positives(positives, min_depth=min_depth)
-    negative_total = (negative_depths["depth"] >= min_depth).sum()
+def filter_negatives(negatives, min_depth=4, depth_samples=None):
+    negatives = negatives[negatives[depth_samples].sum(axis=1) >= min_depth]
+    return negatives
+
+
+def rate(positives, negative_depths, label, min_depth=4, depth_samples=None):
+    positives = filter_positives(positives, min_depth=min_depth, depth_samples=depth_samples)
+    negative_total = filter_negatives(negatives, min_depth=min_depth, depth_samples=depth_samples).sum()
 
     positive_cum = np.bincount(np.asarray(np.rint(positives["qual"]), dtype=np.int64))[::-1].cumsum()[::-1]
     negative_cum = negative_total - positive_cum
@@ -379,12 +387,12 @@ def rate(positives, negative_depths, label, min_depth=4):
     return pd.DataFrame({"qual": np.arange(len(rate_cum)), label: rate_cum})
 
 
-def fpr(fp, covered_depths, min_depth=4):
-    return rate(fp, covered_depths, "fpr", min_depth=min_depth)
+def fpr(fp, covered_depths, min_depth=4, depth_samples=None):
+    return rate(fp, covered_depths, "fpr", min_depth=min_depth, depth_samples=depth_samples)
 
 
-def tpr(tp, covered_depths, min_depth=4):
-    return rate(tp, covered_depths, "tpr", min_depth=min_depth)
+def tpr(tp, covered_depths, min_depth=4, depth_samples=None):
+    return rate(tp, covered_depths, "tpr", min_depth=min_depth, depth_samples=depth_samples)
 
 
 rule plot_fpr_vs_tpr:
@@ -407,9 +415,9 @@ rule plot_fpr_vs_tpr:
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
             print("fpr")
-            _fpr = fpr(fp, tn_cov, depth)
+            _fpr = fpr(fp, tn_cov, depth, depth_samples=expand_samples_from_query(wildcards.query, filter_only=True))
             print("tpr")
-            _tpr = tpr(tp, fn_cov, depth)
+            _tpr = tpr(tp, fn_cov, depth, depth_samples=expand_samples_from_query(wildcards.query, call_only=True))
             d = pd.merge(_fpr, _tpr)
             if label == "ALPACA(FDR)":
                 plt.semilogx(d["fpr"][0], d["tpr"][0], "x", color=last_line.get_color(), mew=2)
@@ -538,7 +546,7 @@ rule plot_fdr:
         print(fp.shape, tp.shape)
 
 
-        plt.figure(figsize=(3.86, 2.4), dpi=90)        
+        plt.figure(figsize=(3.86, 2.4), dpi=90)
         for total_fdr in [0.0001, 0.001, 0.01, 0.05, 0.10, 0.25]:
             d = []
             for _ in range(100):
@@ -556,7 +564,7 @@ rule plot_fdr:
         plt.ylabel("CDF")
         sns.despine()
         plt.savefig(output[0], bbox_inches="tight")
-        
+
 
 
 ############################### run time performance ###########################
