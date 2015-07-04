@@ -48,7 +48,6 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize, 
             .arg("--output-tags").arg("DP")
             .arg("--min-MQ").arg("1")  // minimum mapping quality (discard ambiguous reads)
             .arg("--min-BQ").arg("0")  // use all bases (the model cares for bad quality)
-            .arg("--adjust-MQ").arg("50")  // mapping quality downgrade in case of excessive mismatches
             .arg("--output").arg(&fifo)
             .args(&bams.iter().map(|bam| bam.as_ref()).collect_vec());
         if nobaq {
