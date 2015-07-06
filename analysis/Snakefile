@@ -267,7 +267,7 @@ def pileup_depths_cmd(bams, positions=""):
         positions = "--positions '{}'".format(positions)
     cols = [str(4 + k * 3) for k in range(len(bams))]
     return (
-        r"samtools mpileup -B -q0 -Q0 {positions} {bams} | "
+        r"samtools mpileup -B -q1 -Q0 {positions} {bams} | "
         r"cut -f{cols}"
     ).format(positions=positions, bams=bams, cols=",".join(cols))
 
@@ -1103,7 +1103,7 @@ rule samtools:
     resources: benchmark=100
     shell:
         "cut -f1 {input.fai} | parallel -j {threads} "
-        "'samtools mpileup -t DP -gu -B -C50 -Q0 -q1 -f {input.ref} "
+        "'samtools mpileup -t DP -gu -B -Q0 -q1 -f {input.ref} "
         "-r {{}} {input.bams} | "
         "bcftools call -m -v - > \"{output}.{{}}.bcf\"'; "
         "cut -f1 {input.fai} | "
