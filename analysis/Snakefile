@@ -759,6 +759,38 @@ rule plot_priors:
         plt.savefig(output[0])
 
 
+rule plot_dependency_model:
+    output:
+        "plots/algebraic_calling/dependency.pdf"
+    run:
+        het = 0.001
+        k = 20 # sampling rate
+        likelihoods = np.array([0, 0, 0])
+        def het_prior(): # Pr(het)
+            return 1 / k
+
+        def prior(m, n): # Pr(M=m)
+            if m == 0:
+                return 1 - math.fsum(prior(i, n) for i in range(1, 2 * n))
+            return het / m
+
+        def prob_given_het(het): # Pr(M=0 | D, het)
+            return
+
+        def pep_to_het(pep, n=1):
+            den = (1 - pep)
+            nom = math.fsum(1 / i for i in range(1, 2 * n))
+            return den / nom
+        plt.figure(figsize=(3.86, 2.4), dpi=90)
+        peps = pd.Series(np.linspace(0, 1, 20))
+        for n in range(1, 5):
+            line = plt.plot(peps, peps.apply(pep_to_het, n=n), label="n={}".format(n))
+            halfdep = peps ** 0.5
+            plt.plot(peps, halfdep.apply(pep_to_het, n=n), "--", color=line[0].get_color(), label="n={}".format(n))
+        sns.despine()
+        plt.legend()
+        plt.savefig(output[0], bbox_inches="tight")
+
 ##################################### Alpaca ###################################
 
 

@@ -46,6 +46,7 @@ pub fn preprocess<P: AsRef<Path> + Sync>(fasta: &P, bams: &[P], threads: usize, 
             .arg("--fasta-ref").arg(fasta.as_ref())
             .arg("--BCF").arg("--uncompressed")
             .arg("--output-tags").arg("DP")
+            .arg("--adjust-MQ").arg("50")
             .arg("--min-MQ").arg("1")  // minimum mapping quality (discard ambiguous reads)
             .arg("--min-BQ").arg("0")  // use all bases (the model cares for bad quality)
             .arg("--output").arg(&fifo)
