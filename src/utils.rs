@@ -1,6 +1,3 @@
-use std::f64;
-use std::mem;
-
 
 pub fn matrix<T: Copy>(v: T, n: usize, m: usize) -> Vec<Vec<T>> {
     let mut matrix = vec![];

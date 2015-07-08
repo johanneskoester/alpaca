@@ -1,9 +1,9 @@
 use std::f64;
+use std::cmp;
 
 use itertools::Itertools;
-use bio;
+use itertools::linspace;
 use bio::stats::logprobs;
-use bio::stats::combinatorics::combinations;
 
 use call::Caller;
 use call::site::GenotypeLikelihoods;
@@ -14,31 +14,25 @@ use {Prob, LogProb};
 pub struct SampleUnion {
     samples: Vec<usize>,
     ploidy: usize,
-    prior: Vec<LogProb>,
-    path_prior: Vec<LogProb>,
+    prior: Vec<LogProb>
 }
 
 
 impl SampleUnion {
     pub fn new(samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
-        let max_allelefreq = (samples.len() * ploidy) as u64;
-        let path_prior = (0..max_allelefreq + 1)
-            .map(|m| combinations(max_allelefreq, m).ln())
-            .collect();
-        let prior = Self::priors(samples.len(), ploidy, heterozygosity);
+        let prior = Self::priors(samples.len(), ploidy, heterozygosity.ln());
 
         SampleUnion {
             samples: samples,
             ploidy: ploidy,
-            prior: prior,
-            path_prior: path_prior,
+            prior: prior
         }
     }
 
-    fn priors(n: usize, ploidy: usize, heterozygosity: Prob) -> Vec<LogProb> {
+    fn priors(n: usize, ploidy: usize, heterozygosity: LogProb) -> Vec<LogProb> {
         let mut priors = vec![0.0; n * ploidy + 1];
         for m in 1..n * ploidy + 1 {
-            priors[m] = (heterozygosity / m as f64).ln();
+            priors[m] = heterozygosity - (m as f64).ln();
         }
         // prior for AF=0 is 1 - the rest
         priors[0] = logprobs::ln_1m_exp(logprobs::log_prob_sum(&priors[1..]));
@@ -93,63 +87,58 @@ impl SampleUnion {
 
         let mut allelefreq_likelihoods = vec![0.0; self.samples.len() * self.ploidy + 1];
 
-        // calc column k = 0
-        allelefreq_likelihoods[0] = calc_col(&mut z, 0);
-        let mut marginal = allelefreq_likelihoods[0] - self.path_prior[0] + prior[0];
-        assert!(marginal <= 0.0, format!("AF={}: marginal {} > 0, AFL={}, PP={}, P={}", 0, marginal, allelefreq_likelihoods[0], self.path_prior[0], prior[0]));
-
-        for k in 1..self.samples.len() * self.ploidy + 1 {
-            // set z00 to 1 (i.e. 0 in log space) while it is possible to achive the allele freq with the first sample only.
+        for k in 0..self.samples.len() * self.ploidy + 1 {
+            // set z00 to 1 (i.e. 0 in log space) while it is possible to achieve the allele freq with the first sample only.
             // afterwards, set it to -inf like the other z0x values
             if k > self.ploidy {
                 z[0][0] = f64::NEG_INFINITY;
             }
 
             allelefreq_likelihoods[k] = calc_col(&mut z, k);
-
-            let _marginal = logprobs::log_prob_add(marginal, allelefreq_likelihoods[k] - self.path_prior[k] + prior[k]);
-            assert!(_marginal <= 0.0, format!("AF={}: marginal {} > 0, prev_marginal={}, AFL={}, PP={}, P={}", k, _marginal, marginal, allelefreq_likelihoods[k], self.path_prior[k], prior[k]));
-            marginal = _marginal;
         }
+        let marginal = logprobs::log_prob_sum(&allelefreq_likelihoods.iter().zip(prior).map(|(likelihood, prior)| likelihood + prior).collect_vec());
+        assert!(marginal <= 0.00000001, format!("marginal {} > 0, AFL={:?}, priors={:?}", marginal, allelefreq_likelihoods, prior));
 
-        (allelefreq_likelihoods, marginal)
+        (allelefreq_likelihoods, marginal.min(0.0))
     }
 }
 
 
 fn het_sum(n: usize, ploidy: usize) -> f64 {
-    (1..n * ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>().ln()
+    (1..n * ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>()
 }
 
 
 pub struct DependentSampleUnion {
-    population: SampleUnion,
+    population: Option<SampleUnion>,
     union: SampleUnion,
-    het_sum: f64,
-    het_min: f64,
-    het_max: f64
+    priors: Option<Vec<(LogProb, Vec<LogProb>)>>
 }
 
 
 impl DependentSampleUnion {
     pub fn new(population: Vec<usize>, samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
         let filtered_population = population.iter().filter(|s| !samples.contains(s)).cloned().collect_vec();
-        let het_sum_population = het_sum(filtered_population.len(), ploidy);
-        let het_sum_union = het_sum(samples.len(), ploidy);
+        if filtered_population.is_empty() {
+            DependentSampleUnion {
+                population: None,
+                union: SampleUnion::new(samples, ploidy, heterozygosity),
+                priors: None
+            }
+        }
+        else {
+            let het_min = heterozygosity;
+            let het_max = (-het_sum(cmp::min(samples.len(), filtered_population.len()), ploidy).ln()).exp(); // 1 / \sum 1/i
 
-        let union = SampleUnion::new(samples, ploidy, heterozygosity);
-
-        // minimum heterozygosity should be as given
-        let het_min = heterozygosity.ln();
-        // maximum is het, s.t. 1 - het * sum 1/i = prior[-1] <=> het = (1 - prior[-1]) / sum 1/i
-        let het_max = logprobs::ln_1m_exp(*union.prior.last().unwrap()) - het_sum_union;
-        assert!(het_min < het_max, format!("max-het={}, min-het={}", het_max, het_min));
-        DependentSampleUnion {
-            population: SampleUnion::new(filtered_population, ploidy, heterozygosity),
-            union: union,
-            het_sum: het_sum_population,
-            het_min: het_min,
-            het_max: het_max
+            let priors = linspace::<f64>(het_min, het_max, 10).take(9).map(
+                |het| (het.ln(), SampleUnion::priors(filtered_population.len(), ploidy, het.ln()))
+            ).collect_vec();
+            debug!("priors {:?}", priors);
+            DependentSampleUnion {
+                population: Some(SampleUnion::new(filtered_population, ploidy, heterozygosity)),
+                union: SampleUnion::new(samples, ploidy, heterozygosity),
+                priors: Some(priors)
+            }
         }
     }
 }
@@ -157,18 +146,27 @@ impl DependentSampleUnion {
 
 impl Caller for DependentSampleUnion {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
-        if self.population.samples.is_empty() {
-            self.union.call(likelihoods)
+        if let Some(ref population) = self.population {
+            let priors = self.priors.as_ref().unwrap();
+            let mut probs = priors.iter().map(|&(_, ref prior)| population.marginal(likelihoods, prior).1).collect_vec();
+            let marginal_prob = logprobs::log_prob_sum(&probs);
+
+            // TODO ensure that expectation het is 0.001 per default if all likelihoods are 1 (by carefully choosing prior distribution)!!
+            for (i, &(het, _)) in priors.iter().enumerate() {
+                probs[i] += het - marginal_prob;
+            }
+            let expected_het = logprobs::log_prob_sum(&probs);
+            debug!("exp het = {}", expected_het);
+
+            let prior = SampleUnion::priors(self.union.samples.len(), self.union.ploidy, expected_het);
+            let prob = self.union.call_with_prior(0, likelihoods, &prior);
+
+            debug!("posterior = {}", prob);
+
+            prob
         }
         else {
-            let population_ref = self.population.call(likelihoods);
-            let het = (logprobs::ln_1m_exp(population_ref) - self.het_sum).min(self.het_max).max(self.het_min);
-            assert!(het != f64::NAN, format!("Calculated heterozygosity is NaN: pop_ref={}, het_sum={}", population_ref, self.het_sum));
-            let prior = SampleUnion::priors(self.union.samples.len(), self.union.ploidy, het.exp());
-            debug!("{:?} {}", prior, het);
-            let prob = self.union.call_with_prior(0, likelihoods, &prior);
-            debug!("union: {}", prob);
-            prob
+            self.union.call(likelihoods)
         }
     }
 }
