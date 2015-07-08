@@ -151,11 +151,12 @@ impl Caller for DependentSampleUnion {
             let mut probs = priors.iter().map(|&(_, ref prior)| population.marginal(likelihoods, prior).1).collect_vec();
             let marginal_prob = logprobs::log_prob_sum(&probs);
 
-            // TODO ensure that expectation het is 0.001 per default if all likelihoods are 1 (by carefully choosing prior distribution)!!
+            // TODO ensure that expected het is 0.001 per default if all likelihoods are 1 (by carefully choosing prior distribution)!!
             for (i, &(het, _)) in priors.iter().enumerate() {
                 probs[i] += het - marginal_prob;
             }
             let expected_het = logprobs::log_prob_sum(&probs);
+
             debug!("exp het = {}", expected_het);
 
             let prior = SampleUnion::priors(self.union.samples.len(), self.union.ploidy, expected_het);
