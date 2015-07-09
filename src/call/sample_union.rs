@@ -209,7 +209,10 @@ mod tests {
     }
 
     fn zero_likelihoods() -> Vec<GenotypeLikelihoods> {
-        vec![ GenotypeLikelihoods::new(vec![Some(0.0), Some(0.0), Some(0.0)], 2) ]
+        vec![
+            GenotypeLikelihoods::new(vec![Some(0.0), Some(0.0), Some(0.0)], 2),
+            GenotypeLikelihoods::new(vec![Some(0.0), Some(0.0), Some(0.0)], 2)
+        ]
     }
 
     fn eq(a: LogProb, b: LogProb) -> bool {
@@ -239,13 +242,24 @@ mod tests {
     fn test_marginal() {
         let union = setup(1);
         let likelihoods = ref_likelihoods();
-
         let (allelefreq_likelihoods, marginal) = union.marginal(&likelihoods, &union.prior);
         println!("marginal {} {}", allelefreq_likelihoods[0], marginal);
+    }
 
+    #[test]
+    fn test_marginal_zero() {
+        let union = setup(1);
         let zero_likelihoods = zero_likelihoods();
         let (allelefreq_likelihoods, _) = union.marginal(&zero_likelihoods, &union.prior);
         assert_eq!(allelefreq_likelihoods, [0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn test_marginal_zero_twosample() {
+        let union = setup(2);
+        let zero_likelihoods = zero_likelihoods();
+        let (allelefreq_likelihoods, _) = union.marginal(&zero_likelihoods, &union.prior);
+        assert_eq!(allelefreq_likelihoods, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
     }
 
     #[test]
