@@ -364,13 +364,13 @@ rule tpr_covered_depths:
 
 
 def filter_positives(positives, min_depth=4, depth_samples=None):
-    positives = positives[positives[depth_samples].sum(axis=1) >= min_depth]
+    positives = positives[positives[depth_samples].min(axis=1) >= min_depth]
     positives = positives[positives["qual"] >= 1]
     return positives
 
 
 def filter_negatives(negatives, min_depth=4, depth_samples=None):
-    negatives = negatives[negatives[depth_samples].sum(axis=1) >= min_depth]
+    negatives = negatives[negatives[depth_samples].min(axis=1) >= min_depth]
     return negatives
 
 
@@ -415,9 +415,9 @@ rule plot_fpr_vs_tpr:
             tp = pd.read_table(tp)
             fp = pd.read_table(fp)
             print("fpr")
-            _fpr = fpr(fp, tn_cov, depth, depth_samples=get_samples_from_query(wildcards.query_fpr, filter_only=True))
+            _fpr = fpr(fp, tn_cov, depth, depth_samples=get_samples_from_query(wildcards.query_fpr))
             print("tpr")
-            _tpr = tpr(tp, fn_cov, depth, depth_samples=get_samples_from_query(wildcards.query_tpr, call_only=True))
+            _tpr = tpr(tp, fn_cov, depth, depth_samples=get_samples_from_query(wildcards.query_tpr))
             d = pd.merge(_fpr, _tpr)
             if label == "ALPACA(FDR)":
                 plt.semilogx(d["fpr"][0], d["tpr"][0], "x", color=last_line.get_color(), mew=2)
@@ -1103,7 +1103,7 @@ rule samtools:
     resources: benchmark=100
     shell:
         "cut -f1 {input.fai} | parallel -j {threads} "
-        "'samtools mpileup -t DP -gu -B -Q0 -q1 -f {input.ref} "
+        "'samtools mpileup -t DP -gu -B -C50 -Q0 -q1 -f {input.ref} "
         "-r {{}} {input.bams} | "
         "bcftools call -m -v - > \"{output}.{{}}.bcf\"'; "
         "cut -f1 {input.fai} | "
