@@ -3,7 +3,7 @@ use std::cmp;
 
 use itertools::Itertools;
 use itertools::linspace;
-use bio::stats::{logprobs, combinatorics};
+use bio::stats::{logprobs};
 
 use call::Caller;
 use call::site::GenotypeLikelihoods;
@@ -14,24 +14,18 @@ use {Prob, LogProb};
 pub struct SampleUnion {
     samples: Vec<usize>,
     ploidy: usize,
-    prior: Vec<LogProb>,
-    path_prior: Vec<LogProb>
+    prior: Vec<LogProb>
 }
 
 
 impl SampleUnion {
     pub fn new(samples: Vec<usize>, ploidy: usize, heterozygosity: Prob) -> Self {
-        let max_allelefreq = (samples.len() * ploidy) as u64;
         let prior = Self::priors(samples.len(), ploidy, heterozygosity.ln());
-        let path_prior = (0..max_allelefreq + 1)
-            .map(|m| -combinatorics::combinations(max_allelefreq, m).ln())
-            .collect();
 
         SampleUnion {
             samples: samples,
             ploidy: ploidy,
-            prior: prior,
-            path_prior: path_prior
+            prior: prior
         }
     }
 
@@ -78,13 +72,19 @@ impl SampleUnion {
             let k_idx = k % (self.ploidy + 1);
 
             for j in 1..self.samples.len() + 1 {
+                // path prior is determined by the number of elements in the sum
+                // 1 if j = 1
+                // 1 / (k+1) if k < ploidy
+                // 1 / (ploidy + 1 - (k - (j-1) * ploidy))
+                let path_prior = -(cmp::min(cmp::min(1, k + 1), 1 + j * self.ploidy - k) as f64).ln();
+
                 let mut p = vec![];
                 for m in 0..self.ploidy + 1 {
                     // the actual index of k - m in our representation of z
                     let km_idx = (if k >= m { k as i32 } else { 0i32 } - m as i32).abs() as usize % (self.ploidy + 1);
                     let lh = Self::allelefreq_likelihood(self.samples[j - 1], m, likelihoods);
 
-                    p.push(z[j-1][km_idx] + lh);
+                    p.push(z[j-1][km_idx] + lh + path_prior);
                 }
                 z[j][k_idx] = logprobs::log_prob_sum(&p);
             }
@@ -101,7 +101,7 @@ impl SampleUnion {
                 z[0][0] = f64::NEG_INFINITY;
             }
 
-            allelefreq_likelihoods[k] = calc_col(&mut z, k) + self.path_prior[k];
+            allelefreq_likelihoods[k] = calc_col(&mut z, k);
         }
         let marginal = logprobs::log_prob_sum(&allelefreq_likelihoods.iter().zip(prior).map(|(likelihood, prior)| likelihood + prior).collect_vec());
         assert!(marginal <= 0.0, format!("marginal {} > 0, AFL={:?}, priors={:?}", marginal, allelefreq_likelihoods, prior));
