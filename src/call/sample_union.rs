@@ -90,7 +90,7 @@ impl SampleUnion {
                 path_prior = if k < self.ploidy {
                     -(k as f64 + 1.0).ln()  // k < ploidy case
                 } else {
-                    -((self.ploidy + 1 - cmp::max(0, k - (j - 1) * self.ploidy)) as f64).ln()  // k >= ploidy case
+                    -((self.ploidy + 1 - cmp::max(0, k - (j - 1) * self.ploidy)) as f64).ln()  // k >= ploidy case TODO fixme!
                 };
             }
             z[self.samples.len()][k_idx]
