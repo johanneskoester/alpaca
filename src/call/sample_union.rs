@@ -70,28 +70,36 @@ impl SampleUnion {
         let calc_col = |z: &mut Vec<Vec<LogProb>>, k| {
             // the actual index of k in our representation of z
             let k_idx = k % (self.ploidy + 1);
-            // path prior is determined by the number of elements in the sum
-            // 1 if j = 1
-            // 1 / (k+1) if k < ploidy
-            // 1 / (ploidy + 1 - (k - (j-1) * ploidy))
-            let mut path_prior = 0.0; // j = 1 case
+            // lower limit for sum over z
+            let l = cmp::max(0, k as isize - self.ploidy as isize) as usize;
+            println!("k {}", k);
+            println!("l {}", l);
 
             for j in 1..self.samples.len() + 1 {
-                let mut p = vec![];
-                for m in 0..self.ploidy + 1 {
-                    // the actual index of k - m in our representation of z
-                    let km_idx = (if k >= m { k as i32 } else { 0i32 } - m as i32).abs() as usize % (self.ploidy + 1);
-                    let lh = Self::allelefreq_likelihood(self.samples[j - 1], m, likelihoods);
+                println!("j {}", j);
+                // upper limit for sum over z
+                let u = cmp::min(k, (j-1) * self.ploidy);
+                if u >= l {
+                    // normalize sum over likelihoods by number of summands
+                    let path_prior = -((u + 1 - l) as f64).ln();
+                    println!("u {}", u);
+                    println!("prior {}", path_prior);
 
-                    p.push(z[j-1][km_idx] + lh + path_prior);
+                    let mut p = vec![];
+                    for m in l..(u + 1) {
+                        // the actual index of k - m in our representation of z
+                        //let km_idx = (if k >= m { k as i32 } else { 0i32 } - m as i32).abs() as usize % (self.ploidy + 1);
+
+                        let lh = Self::allelefreq_likelihood(self.samples[j - 1], m, likelihoods);
+
+                        let km_idx = m % (self.ploidy + 1);
+                        p.push(z[j-1][km_idx] + lh + path_prior);
+                    }
+                    z[j][k_idx] = logprobs::log_prob_sum(&p);
                 }
-                z[j][k_idx] = logprobs::log_prob_sum(&p);
-                // update path prior for j > 1
-                path_prior = if k < self.ploidy {
-                    -(k as f64 + 1.0).ln()  // k < ploidy case
-                } else {
-                    -((self.ploidy + 1 - cmp::max(0, k - (j - 1) * self.ploidy)) as f64).ln()  // k >= ploidy case TODO fixme!
-                };
+                else {
+                    z[j][k_idx] = f64::NEG_INFINITY;
+                }
             }
             z[self.samples.len()][k_idx]
         };
@@ -109,9 +117,9 @@ impl SampleUnion {
             allelefreq_likelihoods[k] = calc_col(&mut z, k);
         }
         let marginal = logprobs::log_prob_sum(&allelefreq_likelihoods.iter().zip(prior).map(|(likelihood, prior)| likelihood + prior).collect_vec());
-        assert!(marginal <= 0.0, format!("marginal {} > 0, AFL={:?}, priors={:?}", marginal, allelefreq_likelihoods, prior));
+        assert!(marginal <= 0.00000000001, format!("marginal {} > 0, AFL={:?}, priors={:?}", marginal, allelefreq_likelihoods, prior));
 
-        (allelefreq_likelihoods, marginal)
+        (allelefreq_likelihoods, marginal.min(0.0))
     }
 }
 
