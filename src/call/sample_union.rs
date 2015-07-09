@@ -70,14 +70,13 @@ impl SampleUnion {
         let calc_col = |z: &mut Vec<Vec<LogProb>>, k| {
             // the actual index of k in our representation of z
             let k_idx = k % (self.ploidy + 1);
+            // path prior is determined by the number of elements in the sum
+            // 1 if j = 1
+            // 1 / (k+1) if k < ploidy
+            // 1 / (ploidy + 1 - (k - (j-1) * ploidy))
+            let mut path_prior = 0.0; // j = 1 case
 
             for j in 1..self.samples.len() + 1 {
-                // path prior is determined by the number of elements in the sum
-                // 1 if j = 1
-                // 1 / (k+1) if k < ploidy
-                // 1 / (ploidy + 1 - (k - (j-1) * ploidy))
-                let path_prior = -(cmp::min(cmp::min(1, k + 1), 1 + j * self.ploidy - k) as f64).ln();
-
                 let mut p = vec![];
                 for m in 0..self.ploidy + 1 {
                     // the actual index of k - m in our representation of z
@@ -87,6 +86,12 @@ impl SampleUnion {
                     p.push(z[j-1][km_idx] + lh + path_prior);
                 }
                 z[j][k_idx] = logprobs::log_prob_sum(&p);
+                // update path prior for j > 1
+                path_prior = if k < self.ploidy {
+                    -(k as f64 + 1.0).ln()  // k < ploidy case
+                } else {
+                    -((1 + j * self.ploidy - k) as f64).ln()  // k >= ploidy case
+                };
             }
             z[self.samples.len()][k_idx]
         };
