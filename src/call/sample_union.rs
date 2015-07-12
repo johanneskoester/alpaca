@@ -259,7 +259,9 @@ mod tests {
         let union = setup(1);
         let zero_likelihoods = zero_likelihoods();
         let (allelefreq_likelihoods, _) = union.marginal(&zero_likelihoods, &union.prior);
-        assert_eq!(allelefreq_likelihoods, [0.0, 0.0, 0.0]);
+        for p in allelefreq_likelihoods {
+            assert!(eq(p, 0.0));
+        }
     }
 
     #[test]
@@ -267,7 +269,9 @@ mod tests {
         let union = setup(2);
         let zero_likelihoods = zero_likelihoods();
         let (allelefreq_likelihoods, _) = union.marginal(&zero_likelihoods, &union.prior);
-        assert_eq!(allelefreq_likelihoods, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        for p in allelefreq_likelihoods {
+            assert!(eq(p, 0.0));
+        }
     }
 
     #[test]
