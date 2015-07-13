@@ -72,18 +72,13 @@ impl SampleUnion {
             let k_idx = k % (self.ploidy + 1);
             // lower limit for sum over z
             let l = cmp::max(0, k as isize - self.ploidy as isize) as usize;
-            println!("k {}", k);
-            println!("l {}", l);
 
             for j in 1..self.samples.len() + 1 {
-                println!("j {}", j);
                 // upper limit for sum over z
                 let u = cmp::min(k, (j-1) * self.ploidy);
                 if u >= l {
                     // normalize sum over likelihoods by number of summands
                     let path_prior = -((u + 1 - l) as f64).ln();
-                    println!("u {}", u);
-                    println!("prior {}", path_prior);
 
                     let mut p = vec![];
                     for m in l..(u + 1) {
