@@ -211,7 +211,7 @@ rule plot_coverages:
 
 ############################### FPR vs TPR #####################################
 
-fpr_vs_tpr_caller = "alpaca/nodep/1 alpaca/nodep/0.05 gatk freebayes samtools strelka".split()
+fpr_vs_tpr_caller = "alpaca/nodep/1 alpaca/nodep/0.1 gatk freebayes samtools strelka".split()
 fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) GATK FreeBayes SAMtools Strelka".split()
 
 def fpr_calls(pattern):
