@@ -81,13 +81,14 @@ impl SampleUnion {
                     let path_prior = -((u + 1 - l) as f64).ln();
 
                     let mut p = vec![];
-                    for m in l..(u + 1) {
-                        // the actual index of k - m in our representation of z
-                        //let km_idx = (if k >= m { k as i32 } else { 0i32 } - m as i32).abs() as usize % (self.ploidy + 1);
+                    // allele frequency to consider (+1 to remain unsigned, is reduced before usage)
+                    let mut m = k - (j-1) * self.ploidy + 1;
+                    for k_ in l..(u + 1) {
+                        m -= 1;
 
                         let lh = Self::allelefreq_likelihood(self.samples[j - 1], m, likelihoods);
 
-                        let km_idx = m % (self.ploidy + 1);
+                        let km_idx = k_ % (self.ploidy + 1); // TODO fix index
                         p.push(z[j-1][km_idx] + lh + path_prior);
                     }
                     z[j][k_idx] = logprobs::log_prob_sum(&p);
