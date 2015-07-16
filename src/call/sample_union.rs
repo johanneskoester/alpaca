@@ -125,7 +125,8 @@ fn het_sum(n: usize, ploidy: usize) -> f64 {
 pub struct DependentSampleUnion {
     population: Option<SampleUnion>,
     union: SampleUnion,
-    priors: Option<Vec<(LogProb, Vec<LogProb>)>>
+    priors: Option<Vec<(LogProb, Vec<LogProb>)>>,
+    heterozygosity: LogProb
 }
 
 
@@ -136,7 +137,8 @@ impl DependentSampleUnion {
             DependentSampleUnion {
                 population: None,
                 union: SampleUnion::new(samples, ploidy, heterozygosity),
-                priors: None
+                priors: None,
+                heterozygosity: heterozygosity.ln()
             }
         }
         else {
@@ -150,7 +152,8 @@ impl DependentSampleUnion {
             DependentSampleUnion {
                 population: Some(SampleUnion::new(filtered_population, ploidy, heterozygosity)),
                 union: SampleUnion::new(samples, ploidy, heterozygosity),
-                priors: Some(priors)
+                priors: Some(priors),
+                heterozygosity: heterozygosity.ln()
             }
         }
     }
@@ -160,16 +163,33 @@ impl DependentSampleUnion {
 impl Caller for DependentSampleUnion {
     fn call(&self, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
         if let Some(ref population) = self.population {
-            let priors = self.priors.as_ref().unwrap();
-            let mut probs = priors.iter().map(|&(_, ref prior)| population.marginal(likelihoods, prior).1).collect_vec();
-            let marginal_prob = logprobs::log_prob_sum(&probs);
-
-            // TODO ensure that expected het is 0.001 per default if all likelihoods are 1 (by carefully choosing prior distribution)!!
-            for (i, &(het, _)) in priors.iter().enumerate() {
-                probs[i] += het - marginal_prob;
+            let not_covered = population.samples.iter().all(|&s| likelihoods[s].unknown);
+            let expected_het = if not_covered {
+                self.heterozygosity
             }
-            let expected_het = logprobs::log_prob_sum(&probs);
+            else {
+                let priors = self.priors.as_ref().unwrap();
+                let probs = priors.iter().map(|&(_, ref prior)| population.marginal(likelihoods, prior).1).collect_vec();
 
+                let mut max_prob = f64::NEG_INFINITY;
+                let mut expected_het = self.heterozygosity;
+                for (i, &p) in probs.iter().enumerate() {
+                    if p > max_prob {
+                        max_prob = p;
+                        let (het, _) = priors[i];
+                        expected_het = het;
+                    }
+                }
+                expected_het
+
+                /*
+                let marginal_prob = logprobs::log_prob_sum(&probs);
+                // TODO ensure that expected het is 0.001 per default if all likelihoods are 1 (by carefully choosing prior distribution)!!
+                for (i, &(het, _)) in priors.iter().enumerate() {
+                    probs[i] += het - marginal_prob;
+                }
+                let expected_het = logprobs::log_prob_sum(&probs);*/
+            };
             debug!("exp het = {}", expected_het);
 
             let prior = SampleUnion::priors(self.union.samples.len(), self.union.ploidy, expected_het);

@@ -66,7 +66,7 @@ impl Site {
 pub struct GenotypeLikelihoods {
     likelihoods: Vec<Option<LogProb>>,
     allele_count: usize,
-    unknown: bool,
+    pub unknown: bool,
 }
 
 
