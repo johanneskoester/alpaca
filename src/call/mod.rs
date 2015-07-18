@@ -21,7 +21,6 @@ pub use call::sample_union::{SampleUnion, DependentSampleUnion};
 
 use LogProb;
 use call::site::{Site, GenotypeLikelihoods};
-use utils;
 
 
 pub fn call(bcf: &mut bcf::Reader, query: Box<Caller>, fdr: Option<LogProb>, max_prob: Option<LogProb>, threads: usize) -> Vec<(Site, LogProb)> {

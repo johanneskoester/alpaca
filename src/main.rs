@@ -14,7 +14,6 @@ extern crate bio;
 use bio::stats::logprobs;
 
 use alpaca::cli;
-use alpaca::utils;
 
 
 #[derive(Debug)]

@@ -16,7 +16,6 @@ use LogProb;
 use Prob;
 use call;
 use query;
-use utils;
 
 
 fn mkfifo<'a>(path: &Path) {

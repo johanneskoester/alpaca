@@ -1,8 +1,9 @@
+use std::fmt;
+
 use htslib::bcf;
 use itertools::Itertools;
 use bio::stats::logprobs;
 
-use utils;
 use LogProb;
 
 
@@ -65,7 +66,14 @@ impl Site {
 pub struct GenotypeLikelihoods {
     likelihoods: Vec<Option<LogProb>>,
     allele_count: usize,
-    unknown: bool,
+    pub unknown: bool,
+}
+
+
+impl fmt::Debug for GenotypeLikelihoods {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        self.likelihoods.fmt(f)
+    }
 }
 
 
