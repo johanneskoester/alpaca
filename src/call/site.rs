@@ -113,9 +113,13 @@ impl GenotypeLikelihoods {
         }
 
         let (mut j, mut k) = (0, 0);
+        let mut maxlh = self.likelihoods[0].unwrap();
+        let (mut maxj, mut maxk) = (0, 0);
         for &l in self.likelihoods.iter() {
-            if !l.is_none() && l.unwrap() == 0.0 {
-                return (j, k);
+            if !l.is_none() && l.unwrap() > maxlh {
+                maxlh = l.unwrap();
+                maxj = j;
+                maxk = k;
             }
             j += 1;
             if j > k {
@@ -123,6 +127,7 @@ impl GenotypeLikelihoods {
                 j = 0;
             }
         }
-        panic!("Bug: no likelihood of zero found.");
+
+        (maxj, maxk)
     }
 }
