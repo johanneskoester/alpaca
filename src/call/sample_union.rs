@@ -85,10 +85,10 @@ impl SampleUnion {
                         let m = k - k_;
                         let lh = Self::allelefreq_likelihood(self.samples[j - 1], m, likelihoods);
 
-                        let km_idx = k_ % (self.ploidy + 1); // TODO fix index
-                        p.push(z[j-1][km_idx] + lh + path_prior);
+                        let km_idx = k_ % (self.ploidy + 1); // TODO fix index?
+                        p.push(z[j-1][km_idx] + lh);// + path_prior);
                     }
-                    z[j][k_idx] = logprobs::log_prob_sum(&p);
+                    z[j][k_idx] = logprobs::log_prob_sum(&p).min(0.0);
                 }
                 else {
                     z[j][k_idx] = f64::NEG_INFINITY;
