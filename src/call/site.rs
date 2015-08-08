@@ -78,9 +78,17 @@ impl fmt::Debug for GenotypeLikelihoods {
 
 
 impl GenotypeLikelihoods {
-    pub fn new(likelihoods: Vec<Option<LogProb>>, allele_count: usize) -> Self {
-        let unknown = likelihoods.iter().all(|l| l.is_none());
-        GenotypeLikelihoods { likelihoods: likelihoods, allele_count: allele_count, unknown: unknown }
+    pub fn new(mut likelihoods: Vec<Option<LogProb>>, allele_count: usize) -> Self {
+        let known = likelihoods.iter().filter(|l| l.is_some()).count();
+        if known > 0 {
+            // normalize such that sum of likelihoods is 1 (similar to BCFtools)
+            for i in 0..likelihoods.len() {
+                if let Some(lh) = likelihoods[i] {
+                    likelihoods[i] = Some(lh - (known as f64).ln());
+                }
+            }
+        }
+        GenotypeLikelihoods { likelihoods: likelihoods, allele_count: allele_count, unknown: known == 0 }
     }
 
     pub fn with_allelefreq(&self, m: usize) -> Vec<LogProb> {
