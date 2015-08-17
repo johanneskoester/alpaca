@@ -54,4 +54,8 @@ Separate preprocessing and merging (this allows to add samples or change queries
 
 # Author
 
-Johannes Köster (@johanneskoester)
+Johannes Köster (koester@jimmy.harvard.edu)
+
+# License
+
+Licensed under the MIT license http://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
