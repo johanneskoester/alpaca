@@ -2,6 +2,9 @@
 [![](http://meritbadge.herokuapp.com/alpaca)](https://crates.io/crates/alpaca)
 
 # ALPACA - the ALgebraic PArallel variant CAller
+
+**ALPACA is currently under development and not yet intended for productive use.**
+
 ALPACA is a caller for genomic variants (single nucleotide and small indels) from next-generation sequencing data.
 It has two major distinguishing features compared to other variant callers:
 
