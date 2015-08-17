@@ -51,3 +51,7 @@ Separate preprocessing and merging (this allows to add samples or change queries
     $ alpaca preprocess --threads 8 C.bam > C.bcf
     $ alpaca merge --threads 8 A.bcf B.bcf C.bcf > all.bcf
     $ alpaca call --threads 8 --fdr 0.05 'A - (B + C)' < all.bcf > calls.bcf
+
+# Author
+
+Johannes Köster (@johanneskoester)
