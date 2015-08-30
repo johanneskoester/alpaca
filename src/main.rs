@@ -203,7 +203,7 @@ fn call(args: Vec<String>) {
     let mut fdr: OptionalArg<f64> = OptionalArg::None;
     let mut min_qual: OptionalArg<f64> = OptionalArg::None;
     let mut heterozygosity = 0.001;
-    let mut dependency = false;
+    let mut dependency = 0.0;
     let mut threads = 1;
 
     {
@@ -223,7 +223,7 @@ Example: "alpaca call --fdr 0.05 'A - (B + C)' < filtered.bcf > calls.bcf""#
         ap.refer(&mut heterozygosity)
           .add_option(&["--het"], Store, "Expected heterozygosity (default 0.001).");
         ap.refer(&mut dependency)
-          .add_option(&["--dep", "--dependent-samples"], StoreTrue, "Consider samples to be dependent.");
+          .add_option(&["--dep", "--dependent-samples"], Store, "Consider samples to be dependent. Given value 0<=d<=1 is the degree of dependeny.");
         ap.refer(&mut threads)
           .add_option(&["--threads", "-t"], Store, "Number of threads to use (default 1).");
         parse_args_or_exit(&ap, args);
@@ -233,8 +233,14 @@ Example: "alpaca call --fdr 0.05 'A - (B + C)' < filtered.bcf > calls.bcf""#
         fdr = OptionalArg::Some(0.05);
     }
 
-
     let max_prob = min_qual.into_option().map(logprobs::phred_to_log);
+
+    if dependency > 1.0 || dependency < 0.0 {
+        panic!("Dependency has to be between 0.0 and 1.0.");
+    }
+    if heterozygosity < 0.0 || heterozygosity > 1.0 {
+        panic!("Heterozygosity has to be between 0.0 and 1.0.");
+    }
 
     cli::call(&query, fdr.into_option().map(|fdr| fdr.ln()), max_prob, heterozygosity, dependency, threads);
 }

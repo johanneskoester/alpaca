@@ -209,7 +209,7 @@ pub fn call(
     fdr: Option<LogProb>,
     max_prob: Option<LogProb>,
     heterozygosity: Prob,
-    dependency: bool,
+    dependency: Prob,
     threads: usize
 ) {
     let mut inbcf = bcf::Reader::new(&"-");

@@ -14,12 +14,12 @@ peg_file! parser("grammar.rustpeg");
 pub struct Parser {
     sample_idx: HashMap<String, usize>,
     heterozygosity: Prob,
-    dependency: bool
+    dependency: Prob
 }
 
 
 impl Parser {
-    pub fn new(samples: &[&[u8]], heterozygosity: Prob, dependency: bool) -> Self {
+    pub fn new(samples: &[&[u8]], heterozygosity: Prob, dependency: Prob) -> Self {
         let mut sample_idx = HashMap::new();
         for (idx, sample) in samples.iter().enumerate() {
             sample_idx.insert(str::from_utf8(sample).ok().expect("Invalid sample name in BCF.").to_string(), idx);
@@ -39,38 +39,29 @@ impl Parser {
         self.collect_samples(&expr, &mut samples);
         let population = self.sample_idx(&samples);
 
-        (self.caller(&expr, &population), samples)
+        (self.caller(&expr, &population, call::Dependency::None), samples)
     }
 
-    fn caller(&self, expr: &Box<ast::Expr>, population: &[usize]) -> Box<call::Caller> {
+    fn caller(&self, expr: &Box<ast::Expr>, population: &[usize], dependency: call::Dependency) -> Box<call::Caller> {
         match expr {
             &box ast::Expr::SampleUnion(ref samples) => {
-                if self.dependency {
-                    Box::new(call::DependentSampleUnion::new(
-                        population.to_owned(),
-                        self.sample_idx(samples),
-                        2, // TODO extend to arbitrary ploidy once samtools mpileup has catched up
-                        self.heterozygosity,
-                    ))
-                }
-                else {
-                    Box::new(call::SampleUnion::new(
-                        self.sample_idx(samples),
-                        2, // TODO extend to arbitrary ploidy once samtools mpileup has catched up
-                        self.heterozygosity,
-                    ))
-                }
+                Box::new(call::SampleUnion::new(
+                    self.sample_idx(samples),
+                    2, // TODO extend to arbitrary ploidy once samtools mpileup has catched up
+                    self.heterozygosity,
+                    dependency
+                ))
             },
             &box ast::Expr::Diff(ref a, ref b)           => Box::new(call::Diff {
-                left: self.caller(a, population),
-                right: self.caller(b, population)
+                    left: self.caller(a, population, dependency),
+                    right: self.caller(b, population, call::Dependency::GivenVariant(self.dependency))
             }),
             &box ast::Expr::Union(ref a, ref b)          => Box::new(call::Union {
-                left: self.caller(a, population),
-                right: self.caller(b, population)
+                left: self.caller(a, population, dependency),
+                right: self.caller(b, population, call::Dependency::GivenReference(self.dependency))
             }),
             &box ast::Expr::RelaxedIntersection(ref exprs, k) => Box::new(call::RelaxedIntersection {
-                children: exprs.iter().map(|expr| self.caller(expr, population)).collect(),
+                children: exprs.iter().map(|expr| self.caller(expr, population, dependency)).collect(),
                 k: k,
             })
         }
