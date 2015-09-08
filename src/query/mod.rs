@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn test_parse() {
         let samples = vec![&b"A.0"[..], &b"B_01"[..], &b"C0"[..]];
-        let parser = Parser::new(&samples, 0.001, false);
+        let parser = Parser::new(&samples, 0.001, 0.0);
 
         parser.parse("A.0 - B_01");
         parser.parse("A.0");

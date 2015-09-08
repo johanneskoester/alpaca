@@ -146,14 +146,14 @@ mod tests {
     use bio::stats::logprobs;
 
     use super::*;
-    use call::Caller;
+    use call::{Caller,Dependency};
     use LogProb;
     use call::site::GenotypeLikelihoods;
 
 
     fn setup(n: usize) -> SampleUnion {
         assert!(n > 0);
-        SampleUnion::new((0..n).collect(), 2, 0.001)
+        SampleUnion::new((0..n).collect(), 2, 0.001, Dependency::None)
     }
 
     fn ref_likelihoods() -> Vec<GenotypeLikelihoods> {
