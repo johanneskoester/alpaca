@@ -22,6 +22,10 @@ sns.set_style("ticks")
 savefig = partial(plt.savefig, bbox_inches="tight")
 
 
+cm_blue_alpha = matplotlib.colors.LinearSegmentedColormap.from_list("BlueAlpha", [(0.24, 0.47, 0.71, 0.0), (0.24, 0.47, 0.71, 1.0)])
+cm_red_alpha = matplotlib.colors.LinearSegmentedColormap.from_list("RedAlpha", [(0.67, 0.06, 0.086, 0.3), (0.67, 0.06, 0.086, 1.0)])
+
+
 shell.prefix("set -o pipefail; ")
 
 
@@ -147,7 +151,7 @@ target_fpr_vs_tpr =  expand(expand(
     query_fpr=config["fpr"]["queries"],
     query_tpr=config["tpr"]["queries"],
     layout=["y", "l", "xy", "x"]
-), depth=[4, 20])
+), depth=[4, 6, 8])
 
 
 ########################### Target rules #######################################
@@ -211,8 +215,8 @@ rule plot_coverages:
 
 ############################### FPR vs TPR #####################################
 
-fpr_vs_tpr_caller = "alpaca/nodep/1 alpaca/nodep/0.05 gatk freebayes samtools strelka".split()
-fpr_vs_tpr_labels = "ALPACA ALPACA(FDR) GATK FreeBayes SAMtools Strelka".split()
+fpr_vs_tpr_caller = "alpaca/dep0.5/1 gatk freebayes samtools strelka".split()
+fpr_vs_tpr_labels = "ALPACA GATK FreeBayes SAMtools Strelka".split()
 
 def fpr_calls(pattern):
     def apply(wildcards):
@@ -272,6 +276,14 @@ def pileup_depths_cmd(bams, positions=""):
     ).format(positions=positions, bams=bams, cols=",".join(cols))
 
 
+def format_positives(input, output, wildcards):
+    depths = pileup_depths_cmd(input.bams, input.vcf)
+    cols = r"\t".join(get_samples_from_query(wildcards.query))
+    shell(r"echo -e 'qual\t{cols}' > '{output}'")
+    shell("paste <(grep -v '^#' '{input.vcf}' | "
+          "awk '!_[$1\" \"$2]++' | cut -f6) <({depths}) >> '{output}'")
+
+
 rule fpr_fp:
     input:
         bams=get_bams(),
@@ -279,10 +291,7 @@ rule fpr_fp:
     output:
         "fpr/fp/{caller}/{query}.txt"
     run:
-        depths = pileup_depths_cmd(input.bams, input.vcf)
-        cols = r"\t".join(get_samples_from_query(wildcards.query))
-        shell(r"echo -e 'qual\t{cols}' > '{output}'")
-        shell("paste <(grep -v '^#' '{input.vcf}' | cut -f6) <({depths}) >> '{output}'")
+        format_positives(input, output, wildcards)
 
 
 rule fpr_covered_depths:
@@ -343,10 +352,7 @@ rule tpr_tp:
     output:
         "tpr/tp/{caller}/{query}.txt"
     run:
-        depths = pileup_depths_cmd(input.bams, input.vcf)
-        cols = r"\t".join(get_samples_from_query(wildcards.query))
-        shell(r"echo -e 'qual\t{cols}' > '{output}'")
-        shell("paste <(grep -v '^#' '{input.vcf}' | cut -f6) <({depths}) >> '{output}'")
+        format_positives(input, output, wildcards)
 
 
 rule tpr_covered_depths:
@@ -364,13 +370,13 @@ rule tpr_covered_depths:
 
 
 def filter_positives(positives, min_depth=4, depth_samples=None):
-    positives = positives[positives[depth_samples].min(axis=1) >= min_depth]
+    positives = positives[positives[depth_samples].sum(axis=1) >= min_depth]
     positives = positives[positives["qual"] >= 1]
     return positives
 
 
 def filter_negatives(negatives, min_depth=4, depth_samples=None):
-    negatives = negatives[negatives[depth_samples].min(axis=1) >= min_depth]
+    negatives = negatives[negatives[depth_samples].sum(axis=1) >= min_depth]
     return negatives
 
 
@@ -423,8 +429,8 @@ rule plot_fpr_vs_tpr:
                 plt.semilogx(d["fpr"][0], d["tpr"][0], "x", color=last_line.get_color(), mew=2)
             else:
                 last_line, = plt.semilogx(d["fpr"], d["tpr"], label=label)
-        #plt.ylim((0,1))
-        #plt.xlim((1e-8, 1e-4))
+        plt.ylim((0,0.9))
+        plt.xlim((1e-9, 1e-3))
         if "x" in wildcards.layout:
             plt.xlabel("FPR")
         if "y" in wildcards.layout:
@@ -482,8 +488,8 @@ rule plot_tpr_vs_qual:
 
 rule plot_fp_vs_tp_probs:
     input:
-        tp="tpr/tp/alpaca/nodep/1/{query_tpr}.txt",
-        fp="fpr/fp/alpaca/nodep/1/{query_fpr}.txt"
+        tp="tpr/tp/alpaca/dep0.5/1/{query_tpr}.txt",
+        fp="fpr/fp/alpaca/dep0.5/1/{query_fpr}.txt"
     output:
         "plots/fp_tp_dist/{query_fpr}.{query_tpr}.pdf"
     run:
@@ -491,19 +497,32 @@ rule plot_fp_vs_tp_probs:
         qual_to_prob = lambda qual: 10 ** (-qual / 10)
 
         tp = pd.read_table(input.tp)
-        tp = tp[tp["depth"] >= 0]
+        tp["depth"] = tp.iloc[:, 1:].sum(axis="columns")
         tp["fp"] = False
         tp["prob"] = tp["qual"].apply(qual_to_prob)
 
         fp = pd.read_table(input.fp)
-        fp = fp[fp["depth"] >= 0]
+        fp["depth"] = fp.iloc[:, 1:].sum(axis="columns")
         fp["prob"] = fp["qual"].apply(qual_to_prob)
         fp["fp"] = True
 
-        plt.figure(figsize=(3.86, 2.4), dpi=90)
-        sns.kdeplot(fp["prob"], label="FP", legend=False, cumulative=True, bw="silverman")
-        sns.kdeplot(tp["prob"], label="TP", legend=False, cumulative=True)
 
+        plt.figure(figsize=(3.86, 2.4), dpi=90)
+        #plt.figure(figsize=(7.72, 2.4), dpi=90)
+        #plt.subplot(121)
+        sns.kdeplot(np.log10(tp["depth"]), tp["prob"], label="TP", legend=False, cmap=cm_blue_alpha, shade=True, shade_lowest=False)
+        plt.ylabel("posterior probability")
+        plt.xlabel("log depth")
+        plt.ylim((0,1))
+        plt.xlim((0,3))
+        #sns.despine()
+        
+        #plt.subplot(122)
+        sns.kdeplot(np.log10(fp["depth"]), fp["prob"], label="FP", legend=False, cmap=cm_red_alpha, shade=True, shade_lowest=False)
+        #plt.xlabel("log depth")
+        #plt.ylim((0,1))
+        #plt.xlim((0,0.5))
+        sns.despine()
         """
         p = pd.concat([tp, fp])
         p.sort("prob", inplace=True)
@@ -514,20 +533,15 @@ rule plot_fp_vs_tp_probs:
             plt.plot([p["prob"][i]] * 2, [0, plt.ylim()[1]], label="FDR={}".format(fdr), ls="--")
             print(p[:i]["fp"].sum() / i)
         """
-        plt.legend()
-
-        plt.xlim((0,1))
-        plt.xlabel("posterior probability")
-        plt.ylabel("density")
-        sns.despine()
+        #plt.legend()
         savefig(output[0], bbox_inches="tight")
 
 
 
 rule plot_fdr:
     input:
-        tp="tpr/tp/alpaca/nodep/1/{query_tpr}.txt",
-        fp="fpr/fp/alpaca/nodep/1/{query_fpr}.txt"
+        tp="tpr/tp/alpaca/dep0.5/1/{query_tpr}.txt",
+        fp="fpr/fp/alpaca/dep0.5/1/{query_fpr}.txt"
     output:
         "plots/fdr/{query_fpr}.{query_tpr}.pdf"
     run:
@@ -535,12 +549,12 @@ rule plot_fdr:
         qual_to_prob = lambda qual: 10 ** (-qual / 10)
 
         tp = pd.read_table(input.tp)
-        tp = tp[tp["depth"] >= 50]
+        #tp = tp[tp["depth"] >= 50]
         tp["fp"] = False
         tp["prob"] = tp["qual"].apply(qual_to_prob)
 
         fp = pd.read_table(input.fp)
-        fp = fp[fp["depth"] >= 50]
+        #fp = fp[fp["depth"] >= 50]
         fp["prob"] = fp["qual"].apply(qual_to_prob)
         fp["fp"] = True
         print(fp.shape, tp.shape)
@@ -881,17 +895,17 @@ rule alpaca_call:
     input:
         "alpaca/all.bcf"
     output:
-        "alpaca/{dependency,(dep|nodep)}/{filter}/{query,[^\.]+}.vcf"
+        "alpaca/dep{dependency,(0|0\.5)}/{filter}/{query,[^\.]+}.vcf"
     params:
-        filter=alpaca_filter, query=alpaca_query, dependency=lambda w: "--dep" if w.dependency == "dep" else ""
+        filter=alpaca_filter, query=alpaca_query
     threads: 12
     resources: benchmark=100
     log:
-        "logs/alpaca/{dependency}/{filter}/{query}.call.log"
+        "logs/alpaca/dep{dependency}/{filter}/{query}.call.log"
     benchmark:
-        "benchmarks/alpaca/{dependency}/{filter}/{query}.call.json"
+        "benchmarks/alpaca/dep{dependency}/{filter}/{query}.call.json"
     shell:
-        "alpaca call --threads {threads} {params.dependency} "
+        "alpaca call --threads {threads} --dep {wildcards.dependency} "
         "'{params.query}' {params.filter} < {input} | bcftools view - > '{output}' 2> '{log}'"
 
 
