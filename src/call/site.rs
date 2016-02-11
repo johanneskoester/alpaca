@@ -21,20 +21,19 @@ impl Site {
 
     pub fn genotype_likelihoods(&mut self) -> Result<Vec<GenotypeLikelihoods>, bcf::record::TagError> {
         let allele_count = self.record.allele_count() as usize;
-        let mut fmt = self.record.format(&b"PL"[..]);
-        let pl = try!(fmt.integer());
-        Ok(pl.iter().map(|sample_pl| {
-            let likelihoods = sample_pl.iter().map(|&s| {
-                if s < 0 {
-                    None
-                }
-                else {
-                    Some(logprobs::phred_to_log(s as LogProb))
-                }
-            }).collect();
 
-            GenotypeLikelihoods::new(likelihoods, allele_count)
-        }).collect())
+        if let Ok(pl) = self.record.format(&b"PL"[..]).integer() {
+            Ok(pl.iter().map(|sample_pl| {
+                let lh = sample_pl.iter().map(|&s| if s < 0 { None } else { Some(logprobs::phred_to_log(s as LogProb) ) }).collect();
+                GenotypeLikelihoods::new(lh, allele_count)
+            }).collect())
+        } else {
+            let gl = try!(self.record.format(&b"GL"[..]).float())
+            Ok(gl.iter().map(|sample_gl) {
+                let lh = sample_gl.iter().map(|&s| if s < 0 { None } else { Some(s.ln()) }).collect();
+                GenotypeLikelihoods::new(lh, allele_count)
+            }).collect())
+        }
     }
 
     pub fn set_qual(&mut self, prob: LogProb) {
