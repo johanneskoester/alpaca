@@ -516,7 +516,7 @@ rule plot_fp_vs_tp_probs:
         plt.ylim((0,1))
         plt.xlim((0,3))
         #sns.despine()
-        
+
         #plt.subplot(122)
         sns.kdeplot(np.log10(fp["depth"]), fp["prob"], label="FP", legend=False, cmap=cm_red_alpha, shade=True, shade_lowest=False)
         #plt.xlabel("log depth")

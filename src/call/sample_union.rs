@@ -97,7 +97,7 @@ impl SampleUnion {
                 let u = cmp::min(k, (j-1) * self.ploidy);
                 if u >= l {
                     // normalize sum over likelihoods by number of summands
-                    let path_prior = -((u + 1 - l) as f64).ln();
+                    // let path_prior = -((u + 1 - l) as f64).ln();
 
                     let mut p = vec![];
                     for k_ in l..(u + 1) {
@@ -105,7 +105,7 @@ impl SampleUnion {
                         let lh = Self::allelefreq_likelihood(self.samples[j - 1], m, likelihoods);
 
                         let km_idx = k_ % (self.ploidy + 1); // TODO fix index
-                        p.push(z[j-1][km_idx] + lh + path_prior);
+                        p.push(z[j-1][km_idx] + lh); // + path_prior);
                     }
                     z[j][k_idx] = logprobs::log_prob_sum(&p);
                 }

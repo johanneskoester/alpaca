@@ -10,19 +10,14 @@ keywords = ["Bioinformatics", "Variant-Calling"]
 license = "MIT"
 
 [dependencies]
-itertools = "*"
+bio = "0.8.*"
+rust-htslib = "0.6.*"
+clap = {version = "2.9.*", features = ["yaml", "color", "suggestions"]}
+itertools = "0.4.*"
+log = "0.3.*"
+fern = "0.3.*"
 simple_parallel = "*"
-argparse = "*"
-tempdir = "*"
-log = "*"
-fern = "*"
-bio = ">=0.3.11"
-
-[dependencies.rust-htslib]
-git = "https://github.com/christopher-schroeder/rust-htslib.git"
-
-[dependencies.peg]
-git = "https://github.com/kevinmehall/rust-peg.git"
+peg = "0.3.*"
 
 [[bin]]
 name = "alpaca"
