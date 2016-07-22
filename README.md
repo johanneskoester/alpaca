@@ -11,13 +11,6 @@ It has two major distinguishing features compared to other variant callers:
 * ALPACA incorporates arbitrary filtering of samples against each other into the calling. This is done via an expressive, algebraic query language. It calculates the posterior probability for each locus to not behave like described in the filter query. If that probability is small enough, the locus is called.
 * Since the filtering is part of the null hypothesis, controlling the FDR becomes easy and intuitive.
 
-Alpaca separates calling into three steps.
-
-* preprocessing of each sample into a BCF file,
-* merging preprocessed samples into one BCF file containing only relevant loci,
-* calling on the merged BCF file.
-
-The separation allows to add samples later without having to redo all the computations. Since most of the work is done during preprocessing, the final calling becomes lightweight and can be repeated with different parameters within seconds.
 The algebraic query language allows to model calling scenarios in a flexible way, e.g.,
 
 * calling all de-novo mutations of a child: 'child - (mother + father)'
@@ -38,24 +31,23 @@ The easiest way to install ALPACA is to use the conda package manager (http://co
 to install or update ALPACA.
 
 
-## Example usage
+## Usage
 
-All in one command:
+ALPACA relies on having preprocessed genotype likelihoods for each locus of interest.
+For a set of samples, these can be obtained by performing a joint variant calling with e.g.
+Samtools, Freebayes or GATK or any other small variant caller that either provides a GL or a
+PL field per sample. ALPACA works best if the obtained calls are available in BCF format.
 
-    $ alpaca preprocess --threads 8 A.bam B.bam C.bam | alpaca filter | alpaca call --fdr 0.05 'A - (B + C)' > calls.bcf
+For example, all variants present in sample A, but not in sample B or C while controlling the FDR at 5% can be obtained with
 
-Separate preprocessing and merging (this allows to add samples or change queries without redundant computations; alpaca call usually needs a few seconds):
+    $ alpaca call --fdr 0.05 'A - (B + C)' < likelihoods.bcf > calls.bcf
 
-    $ alpaca preprocess --threads 8 A.bam > A.bcf
-    $ alpaca preprocess --threads 8 B.bam > B.bcf
-    $ alpaca preprocess --threads 8 C.bam > C.bcf
-    $ alpaca merge --threads 8 A.bcf B.bcf C.bcf > all.bcf
-    $ alpaca call --threads 8 --fdr 0.05 'A - (B + C)' < all.bcf > calls.bcf
+with `likelihoods.bcf` being the preprocessed genotype likelihoods for a set of samples consisting of at least sample A, B, and C.
 
-# Author
+## Author
 
-Johannes Köster (koester@jimmy.harvard.edu)
+[Johannes Köster](https://github.com/johanneskoester)
 
-# License
+## License
 
-Licensed under the MIT license http://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
+Licensed under the [MIT license](http://opensource.org/licenses/MIT). This project may not be copied, modified, or distributed except according to those terms.
