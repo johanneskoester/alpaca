@@ -1,16 +1,6 @@
-#![feature(plugin)]
-#![plugin(peg_syntax_ext)]
-#![feature(step_by)]
-#![feature(vec_push_all)]
-#![feature(drain)]
-#![feature(iter_arith)]
-#![feature(box_patterns)]
-
-
 extern crate itertools;
-extern crate simple_parallel;
+extern crate cue;
 extern crate rust_htslib as htslib;
-extern crate tempdir;
 extern crate bio;
 #[macro_use]
 extern crate log;

@@ -1,28 +1,13 @@
-use std::convert::AsRef;
-use std::path::{Path, PathBuf};
-use std::process;
-use std::fs;
-use std::io::Write;
 use std::str;
 
-use tempdir;
 use itertools::Itertools;
 use htslib::bcf;
-use simple_parallel;
-use bio;
 use bio::stats::logprobs;
 
 use LogProb;
 use Prob;
 use call;
 use query;
-
-
-pub fn filter() {
-    filter_cmd()
-       .arg("-")
-       .status().ok().expect("Failed to execute bcftools view.");
-}
 
 
 pub fn call(
@@ -33,7 +18,7 @@ pub fn call(
     dependency: Prob,
     threads: usize
 ) {
-    let mut inbcf = bcf::Reader::new(&"-");
+    let mut inbcf = bcf::Reader::new(&"-").unwrap();
     let parser = query::Parser::new(&inbcf.header.samples(), heterozygosity, dependency);
     let (query_caller, samples) = parser.parse(query);
 
@@ -63,7 +48,7 @@ pub fn call(
     }
     header.push_record(format!("##alpaca_heterozygosity={}", heterozygosity).as_bytes());
 
-    let mut outbcf = bcf::Writer::new(&"-", &header, false, false);
+    let mut outbcf = bcf::Writer::new(&"-", &header, false, false).unwrap();
 
     // perform the calling
     let mut calls = call::call(&mut inbcf, query_caller, fdr, max_prob, threads);

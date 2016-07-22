@@ -2,7 +2,6 @@ use std::f64;
 use std::cmp;
 
 use itertools::Itertools;
-use itertools::linspace;
 use bio::stats::{logprobs};
 
 use call::{Caller, Dependency};
@@ -19,7 +18,7 @@ pub struct SampleUnion {
 
 
 impl SampleUnion {
-    pub fn new(samples: Vec<usize>, ploidy: usize, mut heterozygosity: Prob, dependency: Dependency) -> Self {
+    pub fn new(samples: Vec<usize>, ploidy: usize, heterozygosity: Prob, dependency: Dependency) -> Self {
         // modify heterozygosity according to given dependency
         let het = match dependency {
             Dependency::GivenVariant(dep) if dep > 0.0 => {
@@ -54,7 +53,7 @@ impl SampleUnion {
             priors[m] = heterozygosity - (m as f64).ln();
         }
         // prior for AF=0 is 1 - the rest
-        priors[0] = logprobs::ln_1m_exp(logprobs::log_prob_sum(&priors[1..]));
+        priors[0] = logprobs::ln_1m_exp(logprobs::sum(&priors[1..]));
         priors
     }
 
@@ -78,7 +77,7 @@ impl SampleUnion {
     fn allelefreq_likelihood(sample: usize, m: usize, likelihoods: &[GenotypeLikelihoods]) -> LogProb {
         let lh = likelihoods[sample].with_allelefreq(m);
         let prior = (1.0 / lh.len() as f64).ln();
-        let aflh = logprobs::log_prob_sum(&lh) + prior;
+        let aflh = logprobs::sum(&lh) + prior;
         aflh
     }
 
@@ -107,7 +106,7 @@ impl SampleUnion {
                         let km_idx = k_ % (self.ploidy + 1); // TODO fix index
                         p.push(z[j-1][km_idx] + lh); // + path_prior);
                     }
-                    z[j][k_idx] = logprobs::log_prob_sum(&p);
+                    z[j][k_idx] = logprobs::sum(&p);
                 }
                 else {
                     z[j][k_idx] = f64::NEG_INFINITY;
@@ -128,16 +127,11 @@ impl SampleUnion {
 
             allelefreq_likelihoods[k] = calc_col(&mut z, k);
         }
-        let marginal = logprobs::log_prob_sum(&allelefreq_likelihoods.iter().zip(prior).map(|(likelihood, prior)| likelihood + prior).collect_vec());
+        let marginal = logprobs::sum(&allelefreq_likelihoods.iter().zip(prior).map(|(likelihood, prior)| likelihood + prior).collect_vec());
         assert!(marginal <= 0.00000000001, format!("marginal {} > 0, AFL={:?}, priors={:?}", marginal, allelefreq_likelihoods, prior));
 
         (allelefreq_likelihoods, marginal.min(0.0))
     }
-}
-
-
-fn het_sum(n: usize, ploidy: usize) -> f64 {
-    (1..n * ploidy + 1).map(|i| 1.0 / i as Prob).sum::<Prob>()
 }
 
 

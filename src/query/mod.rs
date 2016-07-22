@@ -7,9 +7,7 @@ use call;
 
 pub mod ast;
 
-
-peg_file! parser("grammar.rustpeg");
-
+mod grammar;
 
 pub struct Parser {
     sample_idx: HashMap<String, usize>,
@@ -34,7 +32,7 @@ impl Parser {
     }
 
     pub fn parse(&self, query: &str) -> (Box<call::Caller>, Vec<String>) {
-        let expr = parser::expr(query).unwrap();
+        let expr = grammar::expr(query).unwrap();
         let mut samples = Vec::new();
         self.collect_samples(&expr, &mut samples);
         let population = self.sample_idx(&samples);
@@ -43,8 +41,8 @@ impl Parser {
     }
 
     fn caller(&self, expr: &Box<ast::Expr>, population: &[usize], dependency: call::Dependency) -> Box<call::Caller> {
-        match expr {
-            &box ast::Expr::SampleUnion(ref samples) => {
+        match **expr {
+            ast::Expr::SampleUnion(ref samples) => {
                 Box::new(call::SampleUnion::new(
                     self.sample_idx(samples),
                     2, // TODO extend to arbitrary ploidy once samtools mpileup has catched up
@@ -52,15 +50,15 @@ impl Parser {
                     dependency
                 ))
             },
-            &box ast::Expr::Diff(ref a, ref b)           => Box::new(call::Diff {
+            ast::Expr::Diff(ref a, ref b)           => Box::new(call::Diff {
                     left: self.caller(a, population, dependency),
                     right: self.caller(b, population, call::Dependency::GivenVariant(self.dependency))
             }),
-            &box ast::Expr::Union(ref a, ref b)          => Box::new(call::Union {
+            ast::Expr::Union(ref a, ref b)          => Box::new(call::Union {
                 left: self.caller(a, population, dependency),
                 right: self.caller(b, population, call::Dependency::GivenReference(self.dependency))
             }),
-            &box ast::Expr::RelaxedIntersection(ref exprs, k) => Box::new(call::RelaxedIntersection {
+            ast::Expr::RelaxedIntersection(ref exprs, k) => Box::new(call::RelaxedIntersection {
                 children: exprs.iter().map(|expr| self.caller(expr, population, dependency)).collect(),
                 k: k,
             })
@@ -68,13 +66,13 @@ impl Parser {
     }
 
     fn collect_samples(&self, expr: &Box<ast::Expr>, samples: &mut Vec<String>) {
-        match expr {
-            &box ast::Expr::SampleUnion(ref _samples) => samples.push_all(_samples),
-            &box ast::Expr::Diff(ref a, ref b) | &box ast::Expr::Union(ref a, ref b) => {
+        match **expr {
+            ast::Expr::SampleUnion(ref _samples) => samples.extend_from_slice(&_samples),
+            ast::Expr::Diff(ref a, ref b) | ast::Expr::Union(ref a, ref b) => {
                 self.collect_samples(a, samples);
                 self.collect_samples(b, samples);
             },
-            &box ast::Expr::RelaxedIntersection(ref children, _) => {
+            ast::Expr::RelaxedIntersection(ref children, _) => {
                 for child in children.iter() {
                     self.collect_samples(child, samples);
                 }

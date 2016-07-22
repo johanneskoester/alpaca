@@ -1,0 +1,30 @@
+name: ALPACA
+author: Johannes Köster <johannes.koester@tu-dortmund.de>
+about: "ALPACA is a caller for genomic variants (single nucleotide and small indels) from next-generation sequencing data that uses a novel algebraic approach to incorporate sample based filtering into the calling. This allows to intuitively control the FDR for arbitrary filtering scenarios."
+args:
+  - verbose:
+    short: v
+    help: Provide verbose output.
+subcommands:
+  - call:
+    about: "Call variants subject to a given filtering scenario."
+    args:
+      - query:
+        required: true
+        help: Algebraic query describing the filtering scenario.
+      - fdr:
+        long: fdr
+        help: Filter by controlling expected false discovery rate.
+      - min-qual:
+        long: min-qual
+        help: Filter by minimum variant quality (i.e. PHRED scaled posterior probability for observing the reference genotype given the query).
+      - heterozygosity:
+        long: het
+        help: Expected heterozygosity (default 0.001).
+      - dependency:
+        long: dep
+        help: Consider samples to be dependent. Given value 0<=d<=1 is the degree of dependeny (default 0).
+      - threads:
+        long: threads
+        short: t
+        help: Number of threads to use (default 1).

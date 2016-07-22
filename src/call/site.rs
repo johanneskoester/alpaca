@@ -12,6 +12,9 @@ pub struct Site {
 }
 
 
+unsafe impl Send for Site {}
+
+
 impl Site {
     pub fn new(mut record: bcf::record::Record) -> Self {
         // ensure that format data is cached into record (for thread safety)
@@ -23,17 +26,18 @@ impl Site {
         let allele_count = self.record.allele_count() as usize;
 
         if let Ok(pl) = self.record.format(&b"PL"[..]).integer() {
-            Ok(pl.iter().map(|sample_pl| {
+            return Ok(pl.iter().map(|sample_pl| {
                 let lh = sample_pl.iter().map(|&s| if s < 0 { None } else { Some(logprobs::phred_to_log(s as LogProb) ) }).collect();
                 GenotypeLikelihoods::new(lh, allele_count)
-            }).collect())
-        } else {
-            let gl = try!(self.record.format(&b"GL"[..]).float())
-            Ok(gl.iter().map(|sample_gl) {
-                let lh = sample_gl.iter().map(|&s| if s < 0 { None } else { Some(s.ln()) }).collect();
-                GenotypeLikelihoods::new(lh, allele_count)
-            }).collect())
+            }).collect());
         }
+
+        let mut gl_fmt = self.record.format(&b"GL"[..]);
+        let gl = try!(gl_fmt.float());
+        Ok(gl.iter().map(|sample_gl| {
+            let lh = sample_gl.iter().map(|&s| if s < 0.0 { None } else { Some(s.ln() as f64) }).collect();
+            GenotypeLikelihoods::new(lh, allele_count)
+        }).collect())
     }
 
     pub fn set_qual(&mut self, prob: LogProb) {
