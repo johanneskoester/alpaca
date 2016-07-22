@@ -1,6 +1,3 @@
-[![Binstar Badge](https://binstar.org/anaconda/conda/badges/installer/conda.svg)](https://anaconda.org/johanneskoester/alpaca)
-[![](http://meritbadge.herokuapp.com/alpaca)](https://crates.io/crates/alpaca)
-
 # ALPACA - the ALgebraic PArallel variant CAller
 
 **ALPACA is currently under development and not yet intended for productive use.**
