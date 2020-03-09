@@ -1,3 +1,6 @@
+**ALPACA has been superseeded by [Varlociraptor](https://varlociraptor.github.io)!**
+
+
 # ALPACA - the ALgebraic PArallel variant CAller
 
 **ALPACA is currently under development and not yet intended for productive use.**
